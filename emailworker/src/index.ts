@@ -19,6 +19,12 @@ export default {
     const rawEmail = new Response(message.raw);
     const email = await parser.parse(await rawEmail.arrayBuffer());
 
+	if (email.sender?.address != "noreply@decagames.com") {
+		console.log("Received email from unauthorized sender:", email.sender?.address);
+		return;
+	}
+
+	
 	// Get the first entry in the user table and log the username
 	const entry = await env.DB.prepare('SELECT username FROM user LIMIT 1').first();
 	if (entry) {

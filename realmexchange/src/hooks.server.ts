@@ -1,6 +1,6 @@
 import type { Handle } from "@sveltejs/kit";
-import { env } from "$env/dynamic/private";
 import { getDb } from "$lib/server/db";
+import { env } from "$env/dynamic/private";
 
 export const handle: Handle = async ({ event, resolve }) => {
     event.locals.db = getDb(event.platform?.env?.DB, env.DATABASE_URL);
