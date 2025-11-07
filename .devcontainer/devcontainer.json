@@ -11,14 +11,13 @@
 
 	"onCreateCommand": "sudo chown $(whoami):$(whoami) .env",
 	"features": {
-		"ghcr.io/devcontainers-extra/features/cloudflare-wrangler:1": {}
+		"ghcr.io/devcontainers-extra/features/cloudflare-wrangler:1": {},
+		"ghcr.io/warrenbuckley/codespace-features/sqlite:1": {}
 	},
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"svelte.svelte-vscode",
-				"tamasfe.even-better-toml",
-				"Prisma.prisma"
+				"svelte.svelte-vscode"
 			]
 		}
 	},
@@ -30,7 +29,7 @@
 	"forwardPorts": [4983],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "cd RealmExchange && npm install"
+	"postCreateCommand": "cd realmexchange && npm install"
 
 	// Configure tool-specific properties.
 	// "customizations": {},
