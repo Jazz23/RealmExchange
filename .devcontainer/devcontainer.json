@@ -7,7 +7,7 @@
 
 	"initializeCommand": "cp -n .env.example .env",
 
-	"runArgs": ["--env-file",".env"],
+	"runArgs": ["--env-file",".env", "--network=host"],
 
 	"onCreateCommand": "sudo chown $(whoami):$(whoami) .env",
 	"features": {
@@ -16,19 +16,21 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"svelte.svelte-vscode"
+				"svelte.svelte-vscode",
+				"tamasfe.even-better-toml",
+				"Prisma.prisma"
 			]
 		}
-	}
+	},
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": []
+	"forwardPorts": [4983],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "yarn install",
+	"postCreateCommand": "cd RealmExchange && npm install"
 
 	// Configure tool-specific properties.
 	// "customizations": {},
