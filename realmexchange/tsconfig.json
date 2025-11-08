@@ -3,7 +3,9 @@
 	"include": [
 		"src/**/*.ts",
 		"test/**/*.ts",
-		"*.ts"
+		"*.ts",
+		"src/**/*.svelte",
+		"*.svelte"
 	],
 	"compilerOptions": {
 		"allowJs": true,
@@ -17,7 +19,9 @@
 		"moduleResolution": "bundler",
 		"types": [
 			"./src/worker-configuration.d.ts",
-			"node"
+			"node",
+			"svelte",
+			"@sveltejs/kit"
 		]
 	}
 	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
