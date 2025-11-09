@@ -5,7 +5,8 @@
 		"test/**/*.ts",
 		"*.ts",
 		"src/**/*.svelte",
-		"*.svelte"
+		"*.svelte",
+		"./.svelte-kit/ambient.d.ts"
 	],
 	"compilerOptions": {
 		"allowJs": true,

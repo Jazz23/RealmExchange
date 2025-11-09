@@ -1,15 +1,15 @@
 // Receives the token from the client and stores it in the database
 
-export const actions = {
-    tryGetVerificationLink: async ({ platform }) => {
-        const emailWorker = platform!.env.EMAIL_STORE as any;
+import { createAccount } from '$lib/server/realmapi.js';
 
-        const resp = await emailWorker.popLink();
-        if (resp.status === 200) {
-            const link = await resp.text();
-            return { link };
+export const actions = {
+    createAccount: async ({ platform }) => {
+        const account = await createAccount(platform!.env);
+
+        if (account instanceof Error) {
+            return { error: account.message };
         }
         
-        return { link: null };
+        return { link: account.verificationLink };
     }
 }

@@ -40,7 +40,7 @@ export default class EmailWorker extends WorkerEntrypoint<Env> {
 		const verificationLink = body.match(/https:\/\/www.realmofthemadgod.com\/account\/v\?b=.{16}&a=\d{16}/)?.[0];
 
 		if (!verificationLink) {
-			console.error("Failed to find verification link in email body");
+			console.error(`Failed to find verification link in email body ${body}`);
 			return;
 		}
 
