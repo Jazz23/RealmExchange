@@ -15,12 +15,18 @@
 			"name": "EMAIL"
 		}
 	],
-	"d1_databases": [
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "EMAIL_STORE",
+				"class_name": "EmailStore"
+			}
+		]
+	},
+	"migrations": [
 		{
-			"binding": "DB",
-			"database_name": "realm-exchange",
-			"database_id": "e37fcdfc-8a13-43e8-b598-fd3d3f9e14a6",
-			"migrations_dir": "../realmexchange/src/lib/server/db/migrations"
+			"tag": "v1",
+			"new_sqlite_classes": ["EmailStore"]
 		}
 	]
 	/**

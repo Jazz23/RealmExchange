@@ -12,27 +12,70 @@
  */
 
 import * as PostalMime from 'postal-mime';
+import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 
-export default {
-  async email(message: any, env: Env, ctx: any) {
-    const parser = new PostalMime.default();
-    const rawEmail = new Response(message.raw);
-    const email = await parser.parse(await rawEmail.arrayBuffer());
+export interface Env {
+	EMAIL_STORE: DurableObjectNamespace<EmailStore>;
+}
 
-	if (email.sender?.address != "noreply@decagames.com") {
-		console.log("Received email from unauthorized sender:", email.sender?.address);
-		return;
+export default class EmailWorker extends WorkerEntrypoint<Env> {
+	async email(message: any) {
+		const parser = new PostalMime.default();
+		const rawEmail = new Response(message.raw);
+		const email = await parser.parse(await rawEmail.arrayBuffer());
+
+		// Only process emails from Deca Games
+		if (email.from?.address != "noreply@decagames.com") {
+			console.log("Received email from unauthorized sender:", email.sender?.address);
+			return;
+		}
+
+		// We also receive welcome emails, ignore those
+		if (!email.subject?.includes("Verify Email")) {
+			return;
+		}
+
+		// Extract the verification link
+		const body = (email.html || email.text)!;
+		const verificationLink = body.match(/https:\/\/www.realmofthemadgod.com\/account\/v\?b=.{16}&a=\d{16}/)?.[0];
+
+		if (!verificationLink) {
+			console.error("Failed to find verification link in email body");
+			return;
+		}
+
+		// Store the verification link in the durable object
+		const stub = this.env.EMAIL_STORE.get(this.env.EMAIL_STORE.idFromName("GlobalEmailStore"));
+		await stub.storeLink(verificationLink);
+
+		console.log("Stored verification link:", verificationLink);
 	}
 
-	
-	// Get the first entry in the user table and log the username
-	const entry = await env.DB.prepare('SELECT username FROM user LIMIT 1').first();
-	if (entry) {
-		console.log(`Username from DB: ${entry.username}`);
-	} else {
-		console.log('No user found in the database.');
+	// Handle fetch requests to the durable object, like popping a link
+	async popLink() {
+		const stub = this.env.EMAIL_STORE.get(this.env.EMAIL_STORE.idFromName("GlobalEmailStore"));
+			const link = await stub.popLink();
+			if (link) {
+				return new Response(link, { status: 200 });
+			} else {
+				return new Response(null, { status: 204 });
+			}
 	}
-
-    // console.log(email);
-  },
 };
+
+export class EmailStore extends DurableObject {
+    verificationLinks: string[];
+
+    constructor(state: DurableObjectState, env: any) {
+        super(state, env);
+        this.verificationLinks = [];
+    }
+
+    async storeLink(storeLink: string) {
+        this.verificationLinks.push(storeLink);
+    }
+
+    async popLink(): Promise<string | undefined> {
+        return this.verificationLinks.shift();
+    }
+}

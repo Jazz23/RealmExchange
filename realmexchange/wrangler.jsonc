@@ -24,14 +24,20 @@
 	 * databases, object storage, AI inference, real-time communication and more.
 	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
 	 */
-	 "d1_databases": [
+	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "realm-exchange",
 			"database_id": "e37fcdfc-8a13-43e8-b598-fd3d3f9e14a6",
 			"migrations_dir": "./src/lib/server/db/migrations"
 		}
-	 ]
+	],
+	"services": [
+		{
+			"binding": "EMAIL_STORE",
+			"service": "emailworker"
+		}
+	]
 	/**
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables

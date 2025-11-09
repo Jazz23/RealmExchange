@@ -4,10 +4,11 @@
 	"private": true,
 	"scripts": {
 		"deploy": "wrangler deploy",
-		"dev": "wrangler dev --persist-to=../.wrangler",
+		"dev": "wrangler dev --inspector-port=1235 --persist-to=../.wrangler",
 		"start": "wrangler dev --persist-to=../.wrangler",
 		"test": "vitest",
-		"cf-typegen": "wrangler types"
+		"cf-typegen": "wrangler types",
+		"send-email": "./test/sendemail.sh"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.8.19",

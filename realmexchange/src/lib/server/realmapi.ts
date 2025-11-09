@@ -12,9 +12,9 @@ export async function verifyAccount(a: string, recaptchaToken: string): Promise<
         a,
         action: "I+swear+to+Oryx+I+am+no+bot",
         "g-recaptcha-response": recaptchaToken
-    }) as string;
+    });
 
-    if (response.includes("Realm of the Mad God - Verification Error")) {
+    if (!response || response.includes("Realm of the Mad God - Verification Error")) {
         console.error("Failed to verify account:");
         return false;
     }
@@ -22,7 +22,7 @@ export async function verifyAccount(a: string, recaptchaToken: string): Promise<
     return true;
 }
 
-async function realmRequest(endpoint: string, params: Record<string, string> = {}): Promise<any> {
+async function realmRequest(endpoint: string, params: Record<string, string> = {}): Promise<string | null> {
     const url = new URL(`${BASE_URL}/${endpoint}`);
     Object.entries(params).forEach(([key, value]) => {
         url.searchParams.append(key, value);
@@ -33,5 +33,10 @@ async function realmRequest(endpoint: string, params: Record<string, string> = {
         headers: HEADERS,
     });
 
-    return response.text();
+    if (!response.ok) {
+        console.error(`Realm request failed: ${await response.text()}`);
+        return null;
+    }
+
+    return await response.text();
 }
