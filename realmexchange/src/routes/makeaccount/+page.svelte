@@ -4,16 +4,9 @@
 
 	let { form }: PageProps = $props();
 	let loading = false;
-
-	function formEnhance() {
-		loading = true;
-		return async () => {
-			loading = false;
-		}
-	}
 </script>
 
-<form method="POST" action="?/createAccount" class="mt-4" use:enhance={formEnhance}>
+<form method="POST" action="?/createAccount" class="mt-4" use:enhance>
 	<button type="submit" class="w-full rounded-b-md bg-blue-500 p-2 text-white"
 		>Create Account</button
 	>

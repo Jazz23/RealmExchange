@@ -9,9 +9,7 @@ const HEADERS = {
     "X-Unity-Version": "2021.3.16f1",
 }
 
-// https://realmofthemadgodhrd.appspot.com/account/register?isAgeVerified=1&entrytag=&signedUpKabamEmail=0&game_net=Unity&play_platform=Unity&game_net_user_id=&newGUID=FdixZAWk%40temptestingsite.us&name=KGtRvsqveQ&newPassword=yez2cXaOJfg6k30YAa1
-
-class Account {
+export class Account {
     guid: string;
     name: string;
     password: string;
