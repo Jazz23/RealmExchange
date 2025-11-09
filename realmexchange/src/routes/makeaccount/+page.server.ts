@@ -5,7 +5,7 @@ import { mockCreateAccount } from '../../../test/mock.js';
 
 export const actions = {
     createAccount: async ({ platform }) => {
-        const account = import.meta.env.PROD ? await createAccount(platform!.env) : mockCreateAccount();
+        const account = import.meta.env.PROD ? await createAccount(platform!.env) : await mockCreateAccount();
         
         if (account instanceof Error) {
             return { error: account.message };

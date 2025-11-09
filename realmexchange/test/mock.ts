@@ -1,7 +1,10 @@
 import { DOMAIN } from "$env/static/private";
 import type { Account } from "../src/lib/server/realmapi.ts";
 
-export function mockCreateAccount(): Account {
+export async function mockCreateAccount(): Promise<Account> {
+    // Wait for 1 second to simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     return {
         guid: `asdf11@${DOMAIN}`,
         name: "Asdfjkwejp",
