@@ -15,6 +15,13 @@
       "when": 1762552039573,
       "tag": "0001_careful_starjammers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1762791020455,
+      "tag": "0002_mighty_spiral",
+      "breakpoints": true
     }
   ]
 }
