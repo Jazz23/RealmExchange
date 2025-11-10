@@ -39,5 +39,9 @@
 		"typescript": "^5.9.2",
 		"vite": "^7.1.7",
 		"wrangler": "^4.46.0"
+	},
+	"dependencies": {
+		"@supabase/ssr": "^0.7.0",
+		"@supabase/supabase-js": "^2.80.0"
 	}
 }
