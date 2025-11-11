@@ -3,5 +3,3 @@
     let { data } = $props();
 
 </script>
-
-{data.bruh}
