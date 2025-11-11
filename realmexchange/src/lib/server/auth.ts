@@ -7,7 +7,6 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { Session, User } from '$lib/server/db/schema';
 import { JWT_SECRET } from '$env/static/private';
-import * as oslo_jwt from '@oslojs/jwt'
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
@@ -19,6 +18,28 @@ interface TokenUser {
 	id: string;
 	username: string;
 	// Add other user fields as needed
+}
+
+export function hashPassword(password: string): string {
+	const hash = sha256(new TextEncoder().encode(password));
+	return encodeHexLowerCase(hash);
+}
+
+export function verifyPassword(passwordHash: string, password: string): boolean {
+	const a = oslo_encoding.decodeHex(passwordHash);
+	const b = sha256(new TextEncoder().encode(password));
+	return constantTimeEqual(a, b);
+}
+
+function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
+	if (a.byteLength !== b.byteLength) {
+		return false;
+	}
+	let c = 0;
+	for (let i = 0; i < a.byteLength; i++) {
+		c |= a[i] ^ b[i];
+	}
+	return c === 0;
 }
 
 export function generateSessionToken() {
