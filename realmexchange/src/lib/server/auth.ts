@@ -268,6 +268,10 @@ export async function validateSessionJWT(jwt: string) {
 }
 
 export async function createAndSetSessionAndJWT(event: RequestEvent, user: User) {
+	// Remove old sessions from the database
+	await db.delete(table.session).where(eq(table.session.userId, user.id));
+
+	// Create new session and JWT and store in database
 	const sessionToken = generateSessionToken();
 	const session = await createSession(sessionToken, user.id);
 	const { sessionJWT, exp: jwtExpiration } = await createSessionJWT(session, user);
