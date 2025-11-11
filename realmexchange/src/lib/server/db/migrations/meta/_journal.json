@@ -22,6 +22,20 @@
       "when": 1762791020455,
       "tag": "0002_mighty_spiral",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1762839458764,
+      "tag": "0003_safe_sharon_ventura",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1762839923200,
+      "tag": "0004_sticky_norrin_radd",
+      "breakpoints": true
     }
   ]
 }

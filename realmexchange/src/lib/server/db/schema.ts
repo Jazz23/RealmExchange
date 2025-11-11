@@ -6,10 +6,6 @@ export const user = sqliteTable('user', {
 	passwordHash: text('password_hash').notNull()
 });
 
-export const recaptchaTokens = sqliteTable('recaptcha_tokens', {
-	token: text('token').primaryKey()
-});
-
 export const session = sqliteTable('session', {
 	id: text('id').primaryKey(),
 	userId: text('user_id')
@@ -18,6 +14,19 @@ export const session = sqliteTable('session', {
 	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
 });
 
+export const account = sqliteTable('account', {
+	ownerId: text('owner_id')
+		.notNull()
+		.references(() => user.id),
+	verified: integer('verified').notNull().default(0),
+	guid: text('guid').primaryKey(),
+	password: text('password').notNull(),
+	name: text('name').notNull(),
+	inventoryRaw: text('inventory_raw').notNull()
+});
+
 export type Session = typeof session.$inferSelect;
 
 export type User = typeof user.$inferSelect;
+
+export type AccountDB = typeof account.$inferSelect;
