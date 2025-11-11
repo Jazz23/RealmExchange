@@ -5,6 +5,13 @@ import * as table from '$lib/server/db/schema.js';
 import { createAccount, loadAccountInventory } from '$lib/server/realmapi.js';
 import { and, eq } from 'drizzle-orm';
 import { mockCreateAccount } from '../../../test/mock.js';
+import { redirect } from '@sveltejs/kit';
+
+export const load = async ({ locals }) => {
+    if (!locals.user) {
+        return redirect(302, '/login');
+    }
+}
 
 export const actions = {
     createAccount: async ({ platform, locals }) => {

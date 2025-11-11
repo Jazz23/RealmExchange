@@ -130,7 +130,7 @@ export function deleteSessionJWTCookie(event: RequestEvent) {
 
 const jwtHS256Key = new Uint8Array(oslo_encoding.decodeHex(JWT_SECRET));
 
-export async function createSessionJWT(session: Session, user: User) {
+export async function createSessionJWT(session: Session, user: User | TokenUser) {
 	const now = new Date();
 
 	const expirationSeconds = 60 * 5; // 5 minute
@@ -139,7 +139,14 @@ export async function createSessionJWT(session: Session, user: User) {
 	const headerJSONBytes = new TextEncoder().encode(headerJSON);
 	const encodedHeader = oslo_encoding.encodeBase64url(headerJSONBytes);
 
-	const { passwordHash, ...userWithoutPass} = user;
+	let userWithoutPass: TokenUser;
+
+	if ('passwordHash' in user) {
+		const { passwordHash, ...otherProps } = user;
+		userWithoutPass = otherProps as TokenUser;
+	} else {
+		userWithoutPass = user;
+	}
 
 	const body = {
 		// Omit the secret hash
@@ -178,7 +185,7 @@ export async function createSessionJWT(session: Session, user: User) {
 	const signature = new Uint8Array(signatureBuffer);
 	const encodedSignature = oslo_encoding.encodeBase64url(signature);
 	const sessionJWT = headerAndBody + "." + encodedSignature;
-	return {sessionJWT, exp: body.exp };
+	return { sessionJWT, exp: body.exp };
 }
 
 export async function validateSessionJWT(jwt: string) {
