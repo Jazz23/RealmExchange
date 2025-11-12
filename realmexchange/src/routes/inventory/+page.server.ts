@@ -17,7 +17,12 @@ export const load = async ({ locals }) => {
         eq(table.account.ownerId, locals.user.id)
     );
 
-    return { accounts: accounts.map(acc => ({ name: acc.name, inventory: acc.inventoryRaw.split(",") })) };
+    // Check if the user needs to set their HWID
+    const hwid = await db.select({ hwid: table.user.hwid }).from(table.user).where(
+        eq(table.user.id, locals.user.id)
+    ).limit(1).get();
+
+    return { accounts: accounts.map(acc => ({ name: acc.name, inventory: acc.inventoryRaw.split(",") })), needsHWID: hwid!.hwid === "" };
 }
 
 export const actions = {
@@ -26,14 +31,21 @@ export const actions = {
             return { error: 'Not authenticated' };
         }
 
+        // Delete any old unverified accounts just in case they didn't verify before
+        await db.delete(table.account).where(and(
+            eq(table.account.ownerId, locals.user.id),
+            eq(table.account.verified, 0)
+        ));
+
         // Create the account via Realm API
         let account;
 
+        // In production, create a real account. In dev, use a mock account
         if (import.meta.env.PROD) {
             account = await createAccount(platform!.env);
         } else {
             // Delete the test account from the db since we're re-making it
-            account = await mockCreateAccount2();
+            account = await mockCreateAccount();
 
             await db.delete(table.account).where(and(
                 eq(table.account.ownerId, locals.user.id),
@@ -55,6 +67,7 @@ export const actions = {
             inventoryRaw: ''
         }
 
+        // Insert the new account
         await db.insert(table.account).values(accountDB);
 
         return { link: account.verificationLink };
@@ -76,19 +89,12 @@ export const actions = {
             return { error: 'No unverified account found' };
         }
 
-        // Get the account inventory from Realm API
-        const inventory = await loadAccountInventory(account);
-        if (inventory == null) {
-            return { error: 'Failed to load account inventory' };
-        }
-
-        // Update the account as verified with inventory
+        // Update the account as verified
         await db.update(table.account).set({
-            verified: 1,
-            inventoryRaw: inventory
+            verified: 1
         }).where(eq(table.account.guid, account.guid));
 
-        return { name: account.name, inventory };
+        return { name: account.name };
     },
     loginAccount: async ({ locals, request }) => {
         if (!locals.user) {
@@ -107,15 +113,87 @@ export const actions = {
             eq(table.account.name, name)
         ).limit(1).get();
 
+        // Get the HWID for the user
+        const hwidRecord = await db.select({ hwid: table.user.hwid }).from(table.user).where(
+            eq(table.user.id, locals.user.id)
+        ).limit(1).get();
+
         if (!account) {
             return { error: 'Account not found' };
         }
 
-        const { accessToken, timestamp } = await getAccessToken(account);
+        if (!hwidRecord || hwidRecord.hwid === "") {
+            return { error: 'HWID not set' };
+        }
+
+        const { accessToken, timestamp } = await getAccessToken({...account, hwid: hwidRecord.hwid });
         if (accessToken === null || timestamp === null) {
             return { error: 'Failed to get access token' };
         }
 
         return { accessToken, timestamp };
+    },
+    refreshInventory: async ({ locals, request }) => {
+        if (!locals.user) {
+            return { error: 'Not authenticated' };
+        }
+
+        // Grab the name from the form data
+        const data = await request.formData();
+        const name = data.get('name');
+
+        if (typeof name !== 'string') {
+            return { error: 'Invalid account name' };
+        }
+
+        // Find the account by name from the DB
+        const account = await db.select({ guid: table.account.guid, password: table.account.password }).from(table.account).where(
+            eq(table.account.name, name)
+        ).limit(1).get();
+
+        // Get the HWID for the user
+        const hwidRecord = await db.select({ hwid: table.user.hwid }).from(table.user).where(
+            eq(table.user.id, locals.user.id)
+        ).limit(1).get();
+
+        if (!account) {
+            return { error: 'Account not found' };
+        }
+
+        if (!hwidRecord || hwidRecord.hwid === "") {
+            return { error: 'HWID not set' };
+        }
+
+        const inventory = await loadAccountInventory({...account, hwid: hwidRecord.hwid });
+        if (inventory == null) {
+            return { error: 'Failed to load account inventory' };
+        }
+
+        // Update the account inventory in the DB
+        await db.update(table.account).set({
+            inventoryRaw: inventory
+        }).where(eq(table.account.guid, account.guid));
+
+        return { inventory: inventory.split(",") };
+    },
+    submitHWID: async ({ locals, request }) => {
+        if (!locals.user) {
+            return { error: 'Not authenticated' };
+        }
+
+        // Grab the HWID from the form data
+        const data = await request.formData();
+        const hwid = data.get('hwid');
+
+        if (typeof hwid !== 'string' || hwid.length === 0) {
+            return { error: 'Invalid HWID' };
+        }
+
+        // Update the user's HWID in the DB
+        await db.update(table.user).set({
+            hwid: hwid
+        }).where(eq(table.user.id, locals.user.id));
+
+        return { success: true };
     }
 }

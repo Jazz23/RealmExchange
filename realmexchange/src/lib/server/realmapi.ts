@@ -1,6 +1,8 @@
 import { DOMAIN } from "$env/static/private";
 import { XMLParser } from "fast-xml-parser";
 import type { AccountDB } from "./db/schema";
+import { SaxesParser } from 'saxes';
+import { getRequestEvent } from "$app/server";
 
 const BASE_URL = "https://www.realmofthemadgod.com";
 const HEADERS = {
@@ -53,7 +55,7 @@ export async function createAccount(env: Env): Promise<Account | Error> {
     return new Account(request.newGUID, request.name, request.newPassword, verificationLink);
 }
 
-export async function loadAccountInventory(account: AccountDB): Promise<any | null> {
+export async function loadAccountInventory(account: { guid: string, password: string, hwid: string }): Promise<string | null> {
     const { accessToken } = await getAccessToken(account);
     if (accessToken === null) {
         console.error("Failed to get access token for account");
@@ -83,15 +85,79 @@ export async function loadAccountInventory(account: AccountDB): Promise<any | nu
         return ""
     }
 
-    // Remove ' from inventory string
-    return inventory;
+    const parsedInventory = await parseInventory(inventory);
+    if (parsedInventory === null) {
+        console.error("Failed to parse inventory items");
+        return null;
+    }
+
+    return parsedInventory.join(",");
 }
 
-export async function getAccessToken(account: { guid: string, password: string }) {
+export async function parseInventory(inventory: string) {
+    const event = getRequestEvent();
+    const r2 = event.platform?.env.R2;
+    if (!r2) {
+        console.error("R2 binding not found");
+        return null;
+    }
+
+    // Parse inventory into normalized hex IDs
+    const itemIds = inventory
+        .split(",")
+        .map(id => parseInt(id, 10))
+        .filter(id => id !== -1)
+        .map(id => "0x" + id.toString(16).toLowerCase());
+
+    const foundItems: string[] = [];
+    const targetAttr = "type";
+
+    const parser = new SaxesParser();
+
+    parser.on("opentag", (node) => {
+        if (node.attributes[targetAttr] && itemIds.includes(node.attributes[targetAttr])) {
+            foundItems.push(node.attributes.id);
+        }
+    });
+
+    // Fetch the object from R2
+    const object = await r2.get("Objects.xml");
+    if (!object || !object.body) {
+        console.error("Objects.xml not found in R2");
+        return null;
+    }
+
+    // Create a reader to stream chunks
+    const reader = object.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+
+    let done = false;
+    while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        if (readerDone) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        parser.write(chunk);
+
+        // Optional: stop early if all found
+        if (foundItems.length === itemIds.length) {
+            done = true;
+            reader.cancel(); // stop reading from R2
+        }
+    }
+
+    if (foundItems.length !== itemIds.length) {
+        return null;
+    }
+
+    return foundItems;
+}
+
+export async function getAccessToken(account: { guid: string, password: string, hwid: string }) {
     const request = {
         guid: account.guid,
         password: account.password,
-        clientToken: "realmexchange"
+        clientToken: account.hwid
     };
 
     const response = await realmRequest("account/verify", request);
@@ -128,41 +194,41 @@ async function pollForVerificationLink(env: Env): Promise<string | null> {
 }
 
 
-    function generateGUID(): string {
-        const randomPart = generateRandomString(8);
-        return `${randomPart}@${DOMAIN}`;
+function generateGUID(): string {
+    const randomPart = generateRandomString(8);
+    return `${randomPart}@${DOMAIN}`;
+}
+
+function generateRandomString(length: number): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+async function realmRequest(endpoint: string, params: Record<string, string> = {}): Promise<string | null> {
+    const url = new URL(`${BASE_URL}/${endpoint}`);
+    Object.entries(params).forEach(([key, value]) => {
+        url.searchParams.append(key, value);
+    });
+
+    const response = await fetch(url.toString(), {
+        method: "POST",
+        headers: HEADERS,
+    });
+
+    if (!response.ok) {
+        console.error(`Realm request failed: ${await response.text()}`);
+        return null;
     }
 
-    function generateRandomString(length: number): string {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-        let result = '';
-        for (let i = 0; i < length; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return result;
+    const text = await response.text();
+    if (text.includes("<Error>")) {
+        console.error(`Realm returned error: ${text}`);
+        return null;
     }
 
-    async function realmRequest(endpoint: string, params: Record<string, string> = {}): Promise<string | null> {
-        const url = new URL(`${BASE_URL}/${endpoint}`);
-        Object.entries(params).forEach(([key, value]) => {
-            url.searchParams.append(key, value);
-        });
-
-        const response = await fetch(url.toString(), {
-            method: "POST",
-            headers: HEADERS,
-        });
-
-        if (!response.ok) {
-            console.error(`Realm request failed: ${await response.text()}`);
-            return null;
-        }
-
-        const text = await response.text();
-        if (text.includes("<Error>")) {
-            console.error(`Realm returned error: ${text}`);
-            return null;
-        }
-
-        return text;
-    }
+    return text;
+}

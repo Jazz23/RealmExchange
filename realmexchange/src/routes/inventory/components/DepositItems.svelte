@@ -4,17 +4,15 @@
 	import { Button } from '$lib/components/ui/button';
 	import AlertCircleIcon from '@lucide/svelte/icons/alert-circle';
 	import Loader2Icon from '@lucide/svelte/icons/loader-2';
+	import { accounts } from '$lib/stores';
 
 	let link = $state('');
 	let loading = $state(false);
 	let name = $state('');
-	let inventory = $state('');
 	let error = $state('');
 </script>
 
-
-<div class="flex flex-col items-center">
-	{#if link == ''}
+{#if link == ''}
 		<form
 			method="POST"
 			action="?/createAccount"
@@ -71,13 +69,13 @@
 						return;
 					}
 
-					if (!result.data?.name || result.data?.inventory == null) {
+					if (!result.data?.name) {
 						error = 'Incomplete account data received';
 						return;
 					}
 
 					name = result.data.name as string;
-					inventory = result.data.inventory as string;
+					accounts.update((current) => [...current, { name, inventory: [] }]);
 				};
 			}}
 		>
@@ -97,9 +95,7 @@
 		</Alert.Root>
 	{/if}
 
-	{#if name && inventory != null}
+	{#if name}
 		<p>Your account has been created!</p>
 		<p>Account Name: {name}</p>
-		<p>Inventory Data: {inventory}</p>
 	{/if}
-</div>

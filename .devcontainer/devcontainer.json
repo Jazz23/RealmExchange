@@ -9,7 +9,10 @@
 
 	"runArgs": ["--env-file",".env", "--network=host"],
 
-	"onCreateCommand": "sudo chown $(whoami):$(whoami) .env",
+	"onCreateCommand": {
+		"dotenv": "sudo chown $(whoami):$(whoami) .env",
+		"objectsxml": "cd realmexchange && npm run r2:putobjectsxml"
+	},
 	"features": {
 		"ghcr.io/devcontainers-extra/features/cloudflare-wrangler:1": {},
 		"ghcr.io/warrenbuckley/codespace-features/sqlite:1": {}
@@ -18,7 +21,8 @@
 		"vscode": {
 			"extensions": [
 				"svelte.svelte-vscode",
-				"bradlc.vscode-tailwindcss"
+				"bradlc.vscode-tailwindcss",
+				"yy0931.vscode-sqlite3-editor"
 			]
 		}
 	},

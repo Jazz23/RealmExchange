@@ -1,18 +1,8 @@
 <script lang="ts">
 	import Account from './Account.svelte';
-
-	interface Data {
-		data: {
-			accounts: {
-				name: string;
-				inventory: string[];
-			}[];
-		};
-	}
-
-	const { data }: Data = $props();
+	import { accounts } from '$lib/stores';
 </script>
 
-{#each data.accounts as account}
+{#each $accounts as account}
 	<Account name={account.name} inventory={account.inventory} />
 {/each}

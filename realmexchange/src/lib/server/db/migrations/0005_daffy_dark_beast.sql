@@ -1,0 +1,1 @@
+ALTER TABLE `user` ADD `hwid` text DEFAULT '' NOT NULL;

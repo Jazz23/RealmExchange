@@ -19,6 +19,7 @@
 		"db:clear:accounts": "sqlite3 ../.wrangler/v3/d1/miniflare-D1DatabaseObject/fa92c093e24cb65a04d2fe43a61e384cab5180d69d421c0a3c38c0f3151adeda.sqlite \"DELETE FROM account;\"",
 		"db:clear:users": "sqlite3 ../.wrangler/v3/d1/miniflare-D1DatabaseObject/fa92c093e24cb65a04d2fe43a61e384cab5180d69d421c0a3c38c0f3151adeda.sqlite \"DELETE FROM user;\"",
 		"db:clear:users:remote": "wrangler d1 execute realm-exchange --remote --command \"DELETE FROM user;\"",
+		"r2:putobjectsxml": "wrangler r2 object put realm-exchange/Objects.xml --file ../Objects.xml --local --persist-to=../.wrangler",
 		"deploy": "npm run build && wrangler pages deploy",
 		"cf-typegen": "wrangler types src/worker-configuration.d.ts"
 	},
@@ -54,6 +55,7 @@
 		"wrangler": "^4.46.0"
 	},
 	"dependencies": {
-		"fast-xml-parser": "^5.3.1"
+		"fast-xml-parser": "^5.3.1",
+		"saxes": "^6.0.0"
 	}
 }
