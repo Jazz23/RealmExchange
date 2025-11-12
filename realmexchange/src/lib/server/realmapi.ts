@@ -53,15 +53,16 @@ export async function createAccount(env: Env): Promise<Account | Error> {
     return new Account(request.newGUID, request.name, request.newPassword, verificationLink);
 }
 
-export async function loadAccountInventory(account: AccountDB): Promise<any | null | {}> {
-    const accessToken = await getAccessToken(account);
+export async function loadAccountInventory(account: AccountDB): Promise<any | null> {
+    const { accessToken } = await getAccessToken(account);
     if (accessToken === null) {
         console.error("Failed to get access token for account");
         return null;
     }
 
     const request = {
-        accessToken
+        accessToken,
+        muleDump: "true"
     }
 
     const response = await realmRequest("char/list", request);
@@ -77,33 +78,34 @@ export async function loadAccountInventory(account: AccountDB): Promise<any | nu
         return null;
     }
 
-    const itemInfo = parsed?.Chars?.[0]?.UniqueItemInfo;
-    if (!itemInfo) {
-        return {}; // We don't want to return null since we successfully loaded the inventory, it just has no items
+    const inventory = parsed?.Chars?.Char?.Equipment as string;
+    if (!inventory) {
+        return ""
     }
 
-    return itemInfo;
+    // Remove ' from inventory string
+    return inventory;
 }
 
-async function getAccessToken(account: AccountDB): Promise<string | null> {
+export async function getAccessToken(account: { guid: string, password: string }) {
     const request = {
         guid: account.guid,
         password: account.password,
-        clientToken: "0"
+        clientToken: "realmexchange"
     };
 
     const response = await realmRequest("account/verify", request);
     if (response === null) {
-        return null;
+        return { accessToken: null, timestamp: null };
     }
 
     const parser = new XMLParser();
     const parsed = parser.parse(response);
-    if (!parsed || !parsed.Account || !parsed.Account.AccessToken) {
-        return null;
+    if (!parsed || !parsed.Account || !parsed.Account.AccessToken || !parsed.Account.AccessTokenTimestamp) {
+        return { accessToken: null, timestamp: null };
     }
 
-    return parsed.Account.AccessToken;
+    return { accessToken: parsed.Account.AccessToken as string, timestamp: parsed.Account.AccessTokenTimestamp as string };
 }
 
 async function pollForVerificationLink(env: Env): Promise<string | null> {
