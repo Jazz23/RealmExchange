@@ -61,7 +61,7 @@ export const actions: Actions = {
 		const passwordHash = auth.hashPassword(password);
 
 		try {
-			const newUser: User = { id: userId, username, passwordHash };
+			const newUser: User = { id: userId, username, passwordHash, hwid: "" };
 			await db.insert(table.user).values(newUser);
 
 			await auth.createAndSetSessionAndJWT(event, newUser);

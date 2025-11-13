@@ -75,7 +75,7 @@
 					}
 
 					name = result.data.name as string;
-					accounts.update((current) => [...current, { name, inventory: [] }]);
+					accounts.update((current) => [...current, { name, inventory: [], seasonal: false }]);
 				};
 			}}
 		>
