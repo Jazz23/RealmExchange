@@ -3,8 +3,10 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { MoveUpRight, RefreshCw } from '@lucide/svelte';
 
-	let { name, inventory, seasonal }: { name: string; inventory: string[], seasonal: boolean } = $props();
+	let { name, inventory, seasonal }: { name: string; inventory: string[]; seasonal: boolean } =
+		$props();
 	let command = $state('');
+	let isRefreshing = $state(false);
 
 	// Base64 encode the access token
 	function generateCommand(accessToken: string, timestamp: string): string {
@@ -14,7 +16,7 @@
 
 <div class="mb-8">
 	<div class="flex flex-row gap-2">
-		<h3 class="mb-4 text-2xl font-bold">{name}, {seasonal ? "Seasonal" : "Not Seasonal"}</h3>
+		<h3 class="mb-4 text-2xl font-bold">{name}, {seasonal ? 'Seasonal' : 'Not Seasonal'}</h3>
 		<form
 			method="POST"
 			action="?/loginAccount"
@@ -33,7 +35,10 @@
 
 					// If login was successful and we have an access token, set it
 					if (result.data?.accessToken && result.data?.timestamp) {
-						command = generateCommand(result.data.accessToken as string, result.data.timestamp as string);
+						command = generateCommand(
+							result.data.accessToken as string,
+							result.data.timestamp as string
+						);
 					}
 				};
 			}}
@@ -44,11 +49,13 @@
 			</Button>
 		</form>
 
-				<form
+		<form
 			method="POST"
 			action="?/refreshInventory"
 			use:enhance={async () => {
+				isRefreshing = true;
 				return async ({ result }) => {
+					isRefreshing = false;
 					if (result.type !== 'success') {
 						alert('Failed to login to account');
 						return;
@@ -69,8 +76,8 @@
 			}}
 		>
 			<input type="hidden" name="name" value={name} />
-			<Button type="submit" class="cursor-pointer">
-				Refresh <RefreshCw />
+			<Button type="submit" class="cursor-pointer" disabled={isRefreshing}>
+				Refresh <RefreshCw class={isRefreshing ? 'animate-spin' : ''} />
 			</Button>
 		</form>
 	</div>
