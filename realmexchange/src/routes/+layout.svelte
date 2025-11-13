@@ -12,14 +12,11 @@
 </svelte:head>
 
 <header class="border-b">
-	<NavigationMenu.Root class="ml-auto mr-3 p-2">
+	<NavigationMenu.Root class="mr-3 ml-auto p-2">
 		<NavigationMenu.List class="ml-auto flex items-center space-x-6">
 			{#if data.user}
 				<NavigationMenu.Item>
-					<NavigationMenu.Link
-						href="/"
-						class="hover:text-primary px-3 py-2 text-sm font-medium"
-					>
+					<NavigationMenu.Link href="/" class="px-3 py-2 text-sm font-medium hover:text-primary">
 						Marketplace
 					</NavigationMenu.Link>
 				</NavigationMenu.Item>
@@ -27,7 +24,7 @@
 				<NavigationMenu.Item>
 					<NavigationMenu.Link
 						href="/inventory"
-						class="hover:text-primary px-3 py-2 text-sm font-medium"
+						class="px-3 py-2 text-sm font-medium hover:text-primary"
 					>
 						Inventory
 					</NavigationMenu.Link>
@@ -36,14 +33,14 @@
 				<NavigationMenu.Item>
 					<NavigationMenu.Link
 						href="/trade"
-						class="hover:text-primary px-3 py-2 text-sm font-medium"
+						class="px-3 py-2 text-sm font-medium hover:text-primary"
 					>
 						Trade
 					</NavigationMenu.Link>
 				</NavigationMenu.Item>
 
 				<div class="flex items-center space-x-4 border-l pl-6">
-					<span class="text-muted-foreground text-sm">
+					<span class="text-sm text-muted-foreground">
 						Logged in as <strong>{data.user.username}</strong>
 					</span>
 					<Button href="/logout" variant="outline" size="sm">Logout</Button>

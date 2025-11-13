@@ -4,7 +4,7 @@ export const user = sqliteTable('user', {
 	id: text('id').primaryKey(),
 	username: text('username').notNull().unique(),
 	passwordHash: text('password_hash').notNull(),
-	hwid: text('hwid').notNull().default(""),
+	hwid: text('hwid').notNull().default('')
 });
 
 export const session = sqliteTable('session', {
@@ -23,7 +23,7 @@ export const account = sqliteTable('account', {
 	guid: text('guid').primaryKey(),
 	password: text('password').notNull(),
 	name: text('name').notNull(),
-	inventoryRaw: text('inventory_raw').notNull().default(""),
+	inventoryRaw: text('inventory_raw').notNull().default(''),
 	seasonal: integer('seasonal').notNull()
 });
 
