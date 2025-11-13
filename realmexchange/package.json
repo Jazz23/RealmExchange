@@ -5,6 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev --mode dev",
+		"setup": "npm run db:seed:wrangler && npm run r2:putobjectsxml",
 		"build": "vite build",
 		"preview": "npm run build && wrangler pages dev --inspector-port=1234 --persist-to=../.wrangler",
 		"prepare": "svelte-kit sync || echo ''",
