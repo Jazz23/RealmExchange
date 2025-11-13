@@ -4,5 +4,5 @@
 </script>
 
 {#each $accounts as account}
-	<Account name={account.name} inventory={account.inventory} />
+	<Account name={account.name} inventory={account.inventory} seasonal={account.seasonal} />
 {/each}

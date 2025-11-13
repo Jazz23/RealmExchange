@@ -1,0 +1,1 @@
+ALTER TABLE `account` ADD `seasonal` integer NOT NULL;

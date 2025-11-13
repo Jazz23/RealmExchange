@@ -3,7 +3,7 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { MoveUpRight, RefreshCw } from '@lucide/svelte';
 
-	let { name, inventory }: { name: string; inventory: string[] } = $props();
+	let { name, inventory, seasonal }: { name: string; inventory: string[], seasonal: boolean } = $props();
 	let command = $state('');
 
 	// Base64 encode the access token
@@ -14,7 +14,7 @@
 
 <div class="mb-8">
 	<div class="flex flex-row gap-2">
-		<h3 class="mb-4 text-2xl font-bold">{name}</h3>
+		<h3 class="mb-4 text-2xl font-bold">{name}, {seasonal ? "Seasonal" : "Not Seasonal"}</h3>
 		<form
 			method="POST"
 			action="?/loginAccount"
@@ -61,8 +61,9 @@
 					}
 
 					// If login was successful and we have an access token, set it
-					if (result.data?.inventory) {
+					if (result.data?.inventory && result.data?.seasonal) {
 						inventory = result.data.inventory as string[];
+						seasonal = result.data.seasonal as boolean;
 					}
 				};
 			}}

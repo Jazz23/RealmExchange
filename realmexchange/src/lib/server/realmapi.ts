@@ -55,11 +55,11 @@ export async function createAccount(env: Env): Promise<Account | Error> {
     return new Account(request.newGUID, request.name, request.newPassword, verificationLink);
 }
 
-export async function loadAccountInventory(account: { guid: string, password: string, hwid: string }): Promise<string | null> {
+export async function loadAccountInventory(account: { guid: string, password: string, hwid: string }) {
     const { accessToken } = await getAccessToken(account);
     if (accessToken === null) {
         console.error("Failed to get access token for account");
-        return null;
+        return { inventory: null, seasonal: null };
     }
 
     const request = {
@@ -70,31 +70,42 @@ export async function loadAccountInventory(account: { guid: string, password: st
     const response = await realmRequest("char/list", request);
     if (response === null) {
         console.error("Failed to load account inventory");
-        return null;
+        return { inventory: null, seasonal: null };
     }
 
     const parser = new XMLParser();
     const parsed = parser.parse(response);
     if (!parsed || !parsed.Chars) {
         console.error("Failed to parse account inventory");
-        return null;
+        
+        return { inventory: null, seasonal: null };
     }
 
-    const inventory = parsed?.Chars?.Char?.Equipment as string;
+    let inventory = parsed?.Chars?.Char?.Equipment as string;
     if (!inventory) {
-        return ""
+        inventory = "";
     }
 
     const parsedInventory = await parseInventory(inventory);
     if (parsedInventory === null) {
         console.error("Failed to parse inventory items");
-        return null;
+        return { inventory: null, seasonal: null };
     }
 
-    return parsedInventory.join(",");
+    const seasonal = parsed?.Chars.Char?.Seasonal as boolean;
+    if (seasonal === null) {
+        console.error("Failed to parse seasonal status");
+        return { inventory: null, seasonal: null };
+    }
+
+    return { inventory: parsedInventory.join(","), seasonal };
 }
 
 export async function parseInventory(inventory: string) {
+    if (inventory.trim() === "") {
+        return [];
+    }
+
     const event = getRequestEvent();
     const r2 = event.platform?.env.R2;
     if (!r2) {

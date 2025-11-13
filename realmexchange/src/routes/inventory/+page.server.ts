@@ -13,7 +13,7 @@ export const load = async ({ locals }) => {
     }
 
     // Load all accounts for this user
-    const accounts = await db.select({ name: table.account.name, inventoryRaw: table.account.inventoryRaw }).from(table.account).where(
+    const accounts = await db.select({ name: table.account.name, inventoryRaw: table.account.inventoryRaw, seasonal: table.account.seasonal }).from(table.account).where(
         eq(table.account.ownerId, locals.user.id)
     );
 
@@ -22,7 +22,7 @@ export const load = async ({ locals }) => {
         eq(table.user.id, locals.user.id)
     ).limit(1).get();
 
-    return { accounts: accounts.map(acc => ({ name: acc.name, inventory: acc.inventoryRaw.split(",") })), needsHWID: hwid!.hwid === "" };
+    return { accounts: accounts.map(acc => ({ name: acc.name, inventory: acc.inventoryRaw.split(","), seasonal: acc.seasonal == 1 })), needsHWID: hwid!.hwid === "" };
 }
 
 export const actions = {
@@ -64,7 +64,8 @@ export const actions = {
             guid: account.guid,
             name: account.name,
             password: account.password,
-            inventoryRaw: ''
+            inventoryRaw: '',
+            seasonal: 0
         }
 
         // Insert the new account
@@ -164,17 +165,18 @@ export const actions = {
             return { error: 'HWID not set' };
         }
 
-        const inventory = await loadAccountInventory({...account, hwid: hwidRecord.hwid });
-        if (inventory == null) {
-            return { error: 'Failed to load account inventory' };
+        const { inventory, seasonal } = await loadAccountInventory({...account, hwid: hwidRecord.hwid });
+        if (inventory == null || seasonal == null) {
+            return { error: 'Failed to load account inventory or seasonal status' };
         }
 
         // Update the account inventory in the DB
         await db.update(table.account).set({
-            inventoryRaw: inventory
+            inventoryRaw: inventory,
+            seasonal: seasonal ? 1 : 0
         }).where(eq(table.account.guid, account.guid));
 
-        return { inventory: inventory.split(",") };
+        return { inventory: inventory.split(","), seasonal };
     },
     submitHWID: async ({ locals, request }) => {
         if (!locals.user) {

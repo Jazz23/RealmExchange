@@ -23,7 +23,8 @@ export const account = sqliteTable('account', {
 	guid: text('guid').primaryKey(),
 	password: text('password').notNull(),
 	name: text('name').notNull(),
-	inventoryRaw: text('inventory_raw').notNull().default("")
+	inventoryRaw: text('inventory_raw').notNull().default(""),
+	seasonal: integer('seasonal').notNull()
 });
 
 export type Session = typeof session.$inferSelect;
