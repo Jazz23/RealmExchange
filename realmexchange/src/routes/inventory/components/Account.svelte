@@ -94,15 +94,17 @@
 			<h2 class="mb-4 text-center text-xl font-bold">CMD Command</h2>
 			<p class="mb-4 break-all">{command}</p>
 			<!--Copy text button-->
-			<Button
-				class="text-center"
-				onclick={() => {
-					navigator.clipboard.writeText(command);
-					command = '';
-				}}
-			>
-				Copy
-			</Button>
+			<div class="flex justify-center">
+				<Button
+					class="text-center cursor-pointer"
+					onclick={() => {
+						navigator.clipboard.writeText(command);
+						command = '';
+					}}
+				>
+					Copy
+				</Button>
+			</div>
 		</div>
 	</div>
 {/if}
