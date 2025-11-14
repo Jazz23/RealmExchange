@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import Button from '$lib/components/ui/button/button.svelte';
+	import Account from './inventory/components/Account.svelte';
 
 	let { data } = $props();
 	let selectedListing = $state<any>(null);
@@ -58,18 +59,13 @@
 					<div class="mb-4">
 						<h3 class="mb-2 font-bold">Accounts for Sale:</h3>
 						{#each listing.accounts as account}
-							<div class="mb-2 rounded bg-gray-100 p-3">
-								<p class="font-semibold">{account.name}</p>
-								<p class="text-sm text-gray-600">
-									{account.seasonal ? 'Seasonal' : 'Not Seasonal'} • {account.inventory.length} items
-								</p>
-								{#if account.inventory.length > 0}
-									<p class="mt-1 text-xs text-gray-500">
-										{account.inventory.slice(0, 5).join(', ')}{account.inventory.length > 5
-											? '...'
-											: ''}
-									</p>
-								{/if}
+							<div class="mb-2">
+								<Account
+									name={account.name}
+									inventory={account.inventory}
+									seasonal={account.seasonal}
+									mode="compact"
+								/>
 							</div>
 						{/each}
 					</div>

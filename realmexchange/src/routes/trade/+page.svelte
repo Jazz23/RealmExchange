@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { goto } from '$app/navigation';
+	import Account from '../inventory/components/Account.svelte';
 
 	let { data } = $props();
 	let selectedAccounts = $state<string[]>([]);
@@ -85,24 +86,14 @@
 		<h2 class="mb-4 text-2xl font-bold">Select Accounts to Sell</h2>
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 			{#each data.accounts as account}
-				<button
-					type="button"
-					class="cursor-pointer rounded-lg border-2 p-4 transition-colors text-left {selectedAccounts.includes(
-						account.guid
-					)
-						? 'border-blue-500 bg-blue-50'
-						: 'border-gray-300'}"
-					onclick={() => toggleAccount(account.guid)}
-				>
-					<h3 class="mb-2 font-bold">{account.name}</h3>
-					<p class="text-sm text-gray-600">{account.seasonal ? 'Seasonal' : 'Not Seasonal'}</p>
-					<p class="text-sm text-gray-600">Items: {account.inventory.length}</p>
-					{#if account.inventory.length > 0}
-						<p class="mt-2 text-xs text-gray-500">
-							{account.inventory.slice(0, 5).join(', ')}{account.inventory.length > 5 ? '...' : ''}
-						</p>
-					{/if}
-				</button>
+				<Account
+					name={account.name}
+					inventory={account.inventory}
+					seasonal={account.seasonal}
+					mode="selectable"
+					selected={selectedAccounts.includes(account.guid)}
+					onClick={() => toggleAccount(account.guid)}
+				/>
 			{/each}
 		</div>
 		{#if data.accounts.length === 0}
