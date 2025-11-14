@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { MoveUpRight, RefreshCw } from '@lucide/svelte';
+	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 
 	let { 
 		name, 
@@ -22,6 +23,19 @@
 	let isRefreshing = $state(false);
 	let showListingConflictModal = $state(false);
 	let conflictingListing = $state<{id: string, askingPrice: any[], accountName: string} | null>(null);
+	let localAlert = $state<{message: string | null, type: 'success' | 'error'}>({message: null, type: 'success'});
+	let alertTimeout = $state<ReturnType<typeof setTimeout> | null>(null);
+
+	function showLocalAlert(message: string, type: 'success' | 'error' = 'success') {
+		localAlert = { message, type };
+		if (alertTimeout) {
+			clearTimeout(alertTimeout);
+		}
+		alertTimeout = setTimeout(() => {
+			localAlert = { message: null, type: 'success' };
+			alertTimeout = null;
+		}, 4000);
+	}
 
 	// Group items by name and count quantities
 	let itemCounts = $derived.by(() => {
@@ -83,13 +97,13 @@
 					use:enhance={async () => {
 						return async ({ result }) => {
 							if (result.type !== 'success') {
-								alert('Failed to login to account');
+								showLocalAlert('Failed to login to account', 'error');
 								return;
 							}
 
 							// Check for server-side error
 							if (result?.data?.error) {
-								alert(result.data.error as string);
+								showLocalAlert(result.data.error as string, 'error');
 								return;
 							}
 
@@ -128,13 +142,13 @@
 						return async ({ result }) => {
 							isRefreshing = false;
 							if (result.type !== 'success') {
-								alert('Failed to login to account');
+								showLocalAlert('Failed to login to account', 'error');
 								return;
 							}
 
 							// Check for server-side error
 							if (result?.data?.error) {
-								alert(result.data.error as string);
+								showLocalAlert(result.data.error as string, 'error');
 								return;
 							}
 
@@ -154,6 +168,13 @@
 			</div>
 		{/if}
 	</div>
+{/if}
+
+{#if localAlert.message}
+	<Alert class="mb-4" variant={localAlert.type === 'error' ? 'destructive' : 'default'}>
+		<AlertTitle>{localAlert.type === 'error' ? 'Error' : 'Success'}</AlertTitle>
+		<AlertDescription>{localAlert.message}</AlertDescription>
+	</Alert>
 {/if}
 
 {#if command != ''}
@@ -201,13 +222,13 @@
 						conflictingListing = null;
 						
 						if (result.type !== 'success') {
-							alert('Failed to cancel listing and login to account');
+							showLocalAlert('Failed to cancel listing and login to account', 'error');
 							return;
 						}
 
 						// Check for server-side error
 						if (result?.data?.error) {
-							alert(result.data.error as string);
+							showLocalAlert(result.data.error as string, 'error');
 							return;
 						}
 

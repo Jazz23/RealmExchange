@@ -2,6 +2,9 @@
 	import { enhance } from '$app/forms';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Account from './inventory/components/Account.svelte';
+	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
+	import { invalidateAll } from '$app/navigation';
+	import { alertStore } from '$lib/stores';
 
 	let { data } = $props();
 	let selectedListing = $state<any>(null);
@@ -90,10 +93,10 @@
 									return async ({ result }) => {
 										if (result.type === 'success') {
 											if (result.data?.error) {
-												alert(result.data.error as string);
+												alertStore.show(result.data.error as string, 'error');
 											} else {
-												alert('Trade accepted successfully!');
-												window.location.reload();
+												alertStore.show('Trade accepted successfully!');
+												await invalidateAll();
 											}
 										}
 									};
@@ -115,10 +118,10 @@
 								return async ({ result }) => {
 									if (result.type === 'success') {
 										if (result.data?.error) {
-											alert(result.data.error as string);
+											alertStore.show(result.data.error as string, 'error');
 										} else {
-											alert('Listing cancelled successfully!');
-											window.location.reload();
+											alertStore.show('Listing cancelled successfully!');
+											await invalidateAll();
 										}
 									}
 								};
@@ -133,6 +136,13 @@
 		</div>
 	{/if}
 </div>
+
+{#if $alertStore.message}
+	<Alert class="fixed top-4 left-4 z-50 max-w-md" variant={$alertStore.type === 'error' ? 'destructive' : 'default'}>
+		<AlertTitle>{$alertStore.type === 'error' ? 'Error' : 'Success'}</AlertTitle>
+		<AlertDescription>{$alertStore.message}</AlertDescription>
+	</Alert>
+{/if}
 
 <!-- Counter Offer Modal -->
 {#if showOfferModal && selectedListing}
@@ -164,11 +174,9 @@
 						return async ({ result }) => {
 							if (result.type === 'success') {
 								if (result.data?.error) {
-									alert(result.data.error as string);
+									alertStore.show(result.data.error as string, 'error');
 								} else {
-									alert(
-										'Offer submitted! (Note: This is a simplified version. In a full implementation, the seller would review your offer.)'
-									);
+									alertStore.show('Offer submitted! (Note: This is a simplified version. In a full implementation, the seller would review your offer.)');
 								}
 							}
 						};

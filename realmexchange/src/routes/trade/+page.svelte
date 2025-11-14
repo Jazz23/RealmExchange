@@ -3,6 +3,7 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { goto } from '$app/navigation';
 	import Account from '../inventory/components/Account.svelte';
+	import { alertStore } from '$lib/stores';
 
 	let { data } = $props();
 	let selectedAccounts = $state<string[]>([]);
@@ -169,10 +170,9 @@
 				isSubmitting = false;
 				if (result.type === 'success') {
 					if (result.data?.error) {
-						alert(result.data.error as string);
+						alertStore.show(result.data.error as string, 'error');
 					} else {
-						alert('Listing created successfully!');
-						goto('/');
+						setTimeout(() => goto('/'), 500);
 					}
 				}
 			};
