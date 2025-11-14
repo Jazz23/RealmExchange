@@ -15,7 +15,8 @@ export const load = async ({ locals }) => {
 		.from(table.account)
 		.where(eq(table.account.ownerId, locals.user.id));
 
-	const items = await scrapeCurrentOffers().catch((error) => {
+	// Stream the items asynchronously
+	const items = scrapeCurrentOffers().catch((error) => {
 		console.error('Failed to scrape items:', error);
 		return [];
 	});

@@ -11,6 +11,28 @@
 	let showItemSelector = $state(false);
 	let isSubmitting = $state(false);
 
+	// Handle items as a promise
+	let items = $state<string[]>([]);
+	let itemsLoading = $state(true);
+
+	// Resolve the items promise when it becomes available
+	$effect(() => {
+		if (data.items && typeof data.items.then === 'function') {
+			data.items.then((resolvedItems) => {
+				items = resolvedItems;
+				itemsLoading = false;
+				filterItems();
+			}).catch(() => {
+				items = [];
+				itemsLoading = false;
+			});
+		} else if (Array.isArray(data.items)) {
+			items = data.items;
+			itemsLoading = false;
+			filterItems();
+		}
+	});
+
 	function toggleAccount(guid: string) {
 		if (selectedAccounts.includes(guid)) {
 			selectedAccounts = selectedAccounts.filter((g) => g !== guid);
@@ -25,7 +47,7 @@
 		}
 		itemSearch = '';
 		showItemSelector = false;
-		filteredItems = data.items.slice(0, 50);
+		filteredItems = items.slice(0, 50);
 	}
 
 	function removeItem(itemName: string) {
@@ -40,16 +62,19 @@
 
 	function filterItems() {
 		if (itemSearch.length > 0) {
-			filteredItems = data.items
+			filteredItems = items
 				.filter((i) => i.toLowerCase().includes(itemSearch.toLowerCase()))
 				.slice(0, 50);
 		} else {
-			filteredItems = data.items.slice(0, 50);
+			filteredItems = items.slice(0, 50);
 		}
 	}
 
 	$effect(() => {
-		filterItems();
+		// Re-filter items when search term or items change
+		if (items.length > 0 || !itemsLoading) {
+			filterItems();
+		}
 	});
 </script>
 
@@ -98,15 +123,25 @@
 					placeholder="Search for items..."
 					class="w-full rounded-lg border-2 border-gray-300 p-2"
 				/>
-				{#if showItemSelector && filteredItems.length > 0}
+				{#if showItemSelector}
 					<div
 						class="absolute z-10 max-h-64 w-full overflow-y-auto rounded-lg border-2 border-gray-300 bg-white shadow-lg"
 					>
-						{#each filteredItems as item}
-							<button type="button" class="cursor-pointer p-2 hover:bg-gray-100 w-full text-left" onclick={() => addItem(item)}>
-								{item}
-							</button>
-						{/each}
+						{#if itemsLoading}
+							<div class="p-4 text-center text-gray-500">
+								Loading items...
+							</div>
+						{:else if filteredItems.length > 0}
+							{#each filteredItems as item}
+								<button type="button" class="cursor-pointer p-2 hover:bg-gray-100 w-full text-left" onclick={() => addItem(item)}>
+									{item}
+								</button>
+							{/each}
+						{:else}
+							<div class="p-4 text-center text-gray-500">
+								No items found
+							</div>
+						{/if}
 					</div>
 				{/if}
 			</div>

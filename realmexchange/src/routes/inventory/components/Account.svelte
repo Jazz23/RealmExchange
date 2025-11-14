@@ -8,15 +8,42 @@
 	let command = $state('');
 	let isRefreshing = $state(false);
 
+	// Group items by name and count quantities
+	let itemCounts = $derived.by(() => {
+		const counts: Record<string, number> = {};
+		for (const item of inventory) {
+			counts[item] = (counts[item] || 0) + 1;
+		}
+		return counts;
+	});
+
+	// Get formatted item display (first 5 unique items with quantities)
+	let formattedItems = $derived.by(() => {
+		const uniqueItems = Object.entries(itemCounts)
+			.map(([itemName, count]) => count > 1 ? `${itemName} (x${count})` : itemName)
+			.slice(0, 5);
+		return uniqueItems;
+	});
+
 	// Base64 encode the access token
 	function generateCommand(accessToken: string, timestamp: string): string {
 		return `start "" /D "C:\\RealmOfTheMadGod\\Production" "C:\\RealmOfTheMadGod\\Production\\RotMG Exalt.exe" data:{platform:Deca,guid:,token:${btoa(accessToken)},tokenTimestamp:${btoa(timestamp)},tokenExpiration:ODY0MDA=,env:4,serverName:}`;
 	}
 </script>
 
-<div class="mb-8">
-	<div class="flex flex-row gap-2">
-		<h3 class="mb-4 text-2xl font-bold">{name}, {seasonal ? 'Seasonal' : 'Not Seasonal'}</h3>
+<div class="rounded-lg border-2 border-gray-300 p-4 bg-white">
+	<div class="mb-4">
+		<h3 class="mb-2 text-xl font-bold">{name}</h3>
+		<p class="text-sm text-gray-600">{seasonal ? 'Seasonal' : 'Not Seasonal'}</p>
+		<p class="text-sm text-gray-600">Items: {inventory.length}</p>
+		{#if inventory.length > 0}
+			<p class="mt-2 text-xs text-gray-500">
+				{formattedItems.join(', ')}{Object.keys(itemCounts).length > 5 ? '...' : ''}
+			</p>
+		{/if}
+	</div>
+
+	<div class="flex flex-wrap gap-2">
 		<form
 			method="POST"
 			action="?/loginAccount"
@@ -44,8 +71,8 @@
 			}}
 		>
 			<input type="hidden" name="name" value={name} />
-			<Button type="submit" class="cursor-pointer">
-				Login <MoveUpRight />
+			<Button type="submit" class="cursor-pointer" size="sm">
+				Login <MoveUpRight class="w-4 h-4 ml-1" />
 			</Button>
 		</form>
 
@@ -76,14 +103,11 @@
 			}}
 		>
 			<input type="hidden" name="name" value={name} />
-			<Button type="submit" class="cursor-pointer" disabled={isRefreshing}>
-				Refresh <RefreshCw class={isRefreshing ? 'animate-spin' : ''} />
+			<Button type="submit" class="cursor-pointer" disabled={isRefreshing} size="sm">
+				Refresh <RefreshCw class={`w-4 h-4 ml-1 ${isRefreshing ? 'animate-spin' : ''}`} />
 			</Button>
 		</form>
 	</div>
-	{#if inventory.length > 0}
-		<p>{inventory.join(', ')}</p>
-	{/if}
 </div>
 
 <!--Overlay for when accessToken is not null -->

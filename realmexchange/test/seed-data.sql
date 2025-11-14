@@ -5,3 +5,6 @@ INSERT INTO user (id, username, password_hash, hwid) VALUES
 -- Insert a test account into the db and assign it to the test user
 INSERT INTO account (owner_id, verified, guid, password, name, inventory_raw, seasonal) VALUES
 ('test-user-id', 1, 'asdf11@temptestingsite.us', 'asdf11@temptestingsite.us', 'Asdfjkwejp', 'Fire Spray Spell,Energy Staff', 1);
+
+INSERT INTO account (owner_id, verified, guid, password, name, inventory_raw, seasonal) VALUES
+('test-user-id', 1, 'test@testytesty.com', 'test@testytesty.com', 'TestAccount', 'Potion of Attack, Potion of Attack', 1);
