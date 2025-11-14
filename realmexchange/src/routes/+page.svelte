@@ -78,7 +78,9 @@
 						<h3 class="mb-2 font-bold">Asking Price:</h3>
 						<div class="flex flex-wrap gap-2">
 							{#each listing.askingPriceItems as item}
-								<span class="rounded bg-blue-100 px-2 py-1 text-sm">{item}</span>
+								<span class="rounded bg-blue-100 px-2 py-1 text-sm">
+									{item.name}{item.quantity > 1 ? ` (x${item.quantity})` : ''}
+								</span>
 							{/each}
 						</div>
 					</div>

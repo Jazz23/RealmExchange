@@ -1,3 +1,4 @@
+import { scrapeCurrentOffers } from '$lib/realmeye.js';
 import { db } from '$lib/server/db/index.js';
 import * as table from '$lib/server/db/schema.js';
 import { redirect } from '@sveltejs/kit';
@@ -14,13 +15,19 @@ export const load = async ({ locals }) => {
 		.from(table.account)
 		.where(eq(table.account.ownerId, locals.user.id));
 
+	const items = await scrapeCurrentOffers().catch((error) => {
+		console.error('Failed to scrape items:', error);
+		return [];
+	});
+
 	return {
 		accounts: accounts.map((acc) => ({
 			guid: acc.guid,
 			name: acc.name,
 			inventory: acc.inventoryRaw.split(',').filter((i) => i),
 			seasonal: acc.seasonal == 1
-		}))
+		})),
+		items
 	};
 };
 

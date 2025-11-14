@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev --mode dev",
-		"setup": "npm run db:seed:wrangler && npm run r2:putobjectsxml",
+		"setup": "npm run db:seed:wrangler && npm run r2:putobjectsxml && cp .env.dev .env.local",
 		"build": "vite build",
 		"preview": "npm run build && wrangler pages dev --inspector-port=1234 --persist-to=../.wrangler",
 		"prepare": "svelte-kit sync || echo ''",
@@ -37,6 +37,7 @@
 		"@sveltejs/kit": "^2.48.4",
 		"@sveltejs/vite-plugin-svelte": "^6.2.0",
 		"@tailwindcss/vite": "^4.1.13",
+		"@types/jsdom": "^27.0.0",
 		"@types/node": "^22.19.0",
 		"bits-ui": "^2.14.3",
 		"clsx": "^2.1.1",
@@ -59,6 +60,7 @@
 	},
 	"dependencies": {
 		"fast-xml-parser": "^5.3.1",
+		"jsdom": "^27.2.0",
 		"saxes": "^6.0.0"
 	}
 }

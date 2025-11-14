@@ -5,22 +5,11 @@
 
 	let { data } = $props();
 	let selectedAccounts = $state<string[]>([]);
-	let askingPrice = $state<string[]>([]);
+	let askingPrice = $state<{name: string, quantity: number}[]>([]);
 	let itemSearch = $state('');
-	let items = $state<string[]>([]);
 	let filteredItems = $state<string[]>([]);
 	let showItemSelector = $state(false);
 	let isSubmitting = $state(false);
-
-	// Load items from static JSON
-	async function loadItems() {
-		const response = await fetch('/items.json');
-		const data = await response.json();
-		items = data.items;
-		filteredItems = items.slice(0, 50); // Show first 50 items initially
-	}
-
-	loadItems();
 
 	function toggleAccount(guid: string) {
 		if (selectedAccounts.includes(guid)) {
@@ -31,25 +20,31 @@
 	}
 
 	function addItem(item: string) {
-		if (!askingPrice.includes(item)) {
-			askingPrice = [...askingPrice, item];
+		if (!askingPrice.some(ap => ap.name === item)) {
+			askingPrice = [...askingPrice, { name: item, quantity: 1 }];
 		}
 		itemSearch = '';
 		showItemSelector = false;
-		filteredItems = items.slice(0, 50);
+		filteredItems = data.items.slice(0, 50);
 	}
 
-	function removeItem(item: string) {
-		askingPrice = askingPrice.filter((i) => i !== item);
+	function removeItem(itemName: string) {
+		askingPrice = askingPrice.filter((item) => item.name !== itemName);
+	}
+
+	function updateQuantity(itemName: string, quantity: number) {
+		askingPrice = askingPrice.map((item) =>
+			item.name === itemName ? { ...item, quantity: Math.max(1, quantity) } : item
+		);
 	}
 
 	function filterItems() {
 		if (itemSearch.length > 0) {
-			filteredItems = items
+			filteredItems = data.items
 				.filter((i) => i.toLowerCase().includes(itemSearch.toLowerCase()))
 				.slice(0, 50);
 		} else {
-			filteredItems = items.slice(0, 50);
+			filteredItems = data.items.slice(0, 50);
 		}
 	}
 
@@ -65,8 +60,9 @@
 		<h2 class="mb-4 text-2xl font-bold">Select Accounts to Sell</h2>
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 			{#each data.accounts as account}
-				<div
-					class="cursor-pointer rounded-lg border-2 p-4 transition-colors {selectedAccounts.includes(
+				<button
+					type="button"
+					class="cursor-pointer rounded-lg border-2 p-4 transition-colors text-left {selectedAccounts.includes(
 						account.guid
 					)
 						? 'border-blue-500 bg-blue-50'
@@ -81,7 +77,7 @@
 							{account.inventory.slice(0, 5).join(', ')}{account.inventory.length > 5 ? '...' : ''}
 						</p>
 					{/if}
-				</div>
+				</button>
 			{/each}
 		</div>
 		{#if data.accounts.length === 0}
@@ -107,19 +103,30 @@
 						class="absolute z-10 max-h-64 w-full overflow-y-auto rounded-lg border-2 border-gray-300 bg-white shadow-lg"
 					>
 						{#each filteredItems as item}
-							<div class="cursor-pointer p-2 hover:bg-gray-100" onclick={() => addItem(item)}>
+							<button type="button" class="cursor-pointer p-2 hover:bg-gray-100 w-full text-left" onclick={() => addItem(item)}>
 								{item}
-							</div>
+							</button>
 						{/each}
 					</div>
 				{/if}
 			</div>
 		</div>
 		<div class="flex flex-wrap gap-2">
-			{#each askingPrice as item}
+			{#each askingPrice as item (item.name)}
 				<div class="flex items-center gap-2 rounded-lg bg-blue-100 px-3 py-1">
-					<span>{item}</span>
-					<button class="text-red-500 hover:text-red-700" onclick={() => removeItem(item)}>
+					<span class="flex-1">{item.name}</span>
+					<div class="flex items-center gap-1">
+						<label for="qty-{item.name}" class="text-xs text-gray-600">Qty:</label>
+						<input
+							id="qty-{item.name}"
+							type="number"
+							min="1"
+							value={item.quantity}
+							oninput={(e) => updateQuantity(item.name, parseInt(e.currentTarget.value) || 1)}
+							class="w-12 h-6 text-xs text-center border border-gray-300 rounded"
+						/>
+					</div>
+					<button class="text-red-500 hover:text-red-700 ml-1" onclick={() => removeItem(item.name)}>
 						×
 					</button>
 				</div>
