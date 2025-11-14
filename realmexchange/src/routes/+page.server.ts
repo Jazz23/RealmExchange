@@ -120,6 +120,85 @@ export const actions = {
 					return { error: 'You do not own one or more of the offered accounts' };
 				}
 			}
+		} else {
+			// Direct acceptance - validate that buyer has required items
+			const askingPriceItems = JSON.parse(listing.askingPrice);
+			
+			// Get all buyer's accounts
+			const buyerAccounts = await db
+				.select({
+					guid: table.account.guid,
+					inventoryRaw: table.account.inventoryRaw
+				})
+				.from(table.account)
+				.where(eq(table.account.ownerId, locals.user.id));
+
+			// Count total items across all buyer accounts
+			const buyerItemCounts: Record<string, number> = {};
+			for (const account of buyerAccounts) {
+				const items = account.inventoryRaw.split(',').filter(i => i);
+				for (const item of items) {
+					buyerItemCounts[item] = (buyerItemCounts[item] || 0) + 1;
+				}
+			}
+
+			// Check if buyer has sufficient items for each required item
+			for (const requiredItem of askingPriceItems) {
+				const availableCount = buyerItemCounts[requiredItem.name] || 0;
+				if (availableCount < requiredItem.quantity) {
+					return { 
+						error: `Insufficient ${requiredItem.name}. You have ${availableCount} but need ${requiredItem.quantity}.` 
+					};
+				}
+			}
+
+			// Find accounts that contain the required items and transfer them
+			const requiredItems = askingPriceItems.reduce((acc: Record<string, number>, item: {name: string, quantity: number}) => {
+				acc[item.name] = item.quantity;
+				return acc;
+			}, {});
+
+			const itemsToTransfer: Record<string, number> = { ...requiredItems };
+			const accountsToTransfer: string[] = [];
+
+			// Greedily select accounts that can fulfill the requirements
+			for (const account of buyerAccounts) {
+				if (Object.keys(itemsToTransfer).every(item => itemsToTransfer[item] <= 0)) {
+					break; // All requirements fulfilled
+				}
+
+				const accountItems = account.inventoryRaw.split(',').filter(i => i);
+				const itemCounts: Record<string, number> = {};
+				for (const item of accountItems) {
+					itemCounts[item] = (itemCounts[item] || 0) + 1;
+				}
+
+				// Check if this account has any needed items
+				let hasNeededItems = false;
+				for (const [itemName, neededCount] of Object.entries(itemsToTransfer)) {
+					if (neededCount > 0 && itemCounts[itemName]) {
+						hasNeededItems = true;
+						break;
+					}
+				}
+
+				if (hasNeededItems) {
+					accountsToTransfer.push(account.guid);
+					// Reduce the requirements by what this account provides
+					for (const [itemName, count] of Object.entries(itemCounts)) {
+						if (itemsToTransfer[itemName]) {
+							itemsToTransfer[itemName] = Math.max(0, itemsToTransfer[itemName] - count);
+						}
+					}
+				}
+			}
+
+			// Final check - ensure all requirements are met
+			if (Object.values(itemsToTransfer).some(count => count > 0)) {
+				return { error: 'Unable to fulfill payment requirements with available accounts.' };
+			}
+
+			buyerAccountGuids = accountsToTransfer;
 		}
 
 		// Transfer accounts
