@@ -1,4 +1,4 @@
-import { scrapeCurrentOffers } from '$lib/realmeye.js';
+import { scrapeCurrentOffers } from '$lib/realmeye';
 import { db } from '$lib/server/db/index.js';
 import * as table from '$lib/server/db/schema.js';
 import { redirect } from '@sveltejs/kit';
