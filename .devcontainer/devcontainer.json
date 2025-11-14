@@ -11,7 +11,7 @@
 
 	"onCreateCommand": {
 		"dotenv": "sudo chown $(whoami):$(whoami) .env",
-		"objectsxml": "cd realmexchange && npm run r2:putobjectsxml"
+		"setup": "cd realmexchange && npm install && npm run setup"
 	},
 	"features": {
 		"ghcr.io/devcontainers-extra/features/cloudflare-wrangler:1": {},
@@ -31,10 +31,9 @@
 	// "features": {},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	"forwardPorts": [4983],
+	"forwardPorts": [4983]
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "cd realmexchange && npm install"
 
 	// Configure tool-specific properties.
 	// "customizations": {},
