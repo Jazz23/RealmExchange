@@ -9,11 +9,31 @@ export const load = async ({ locals }) => {
 		return redirect(302, '/login');
 	}
 
-	// Load all verified accounts for this user
-	const accounts = await db
-		.select()
-		.from(table.account)
-		.where(eq(table.account.ownerId, locals.user.id));
+	// Run both database queries in parallel
+	const [activeListings, accounts] = await Promise.all([
+		// Get all active trade listings to find accounts that are already listed
+		db
+			.select({ accountGuids: table.tradeListing.accountGuids })
+			.from(table.tradeListing)
+			.where(eq(table.tradeListing.status, 'active')),
+		// Load all verified accounts for this user
+		db
+			.select()
+			.from(table.account)
+			.where(eq(table.account.ownerId, locals.user.id))
+	]);
+
+	// Collect all account GUIDs that are currently in active listings
+	const listedAccountGuids = new Set<string>();
+	for (const listing of activeListings) {
+		const guids = JSON.parse(listing.accountGuids) as string[];
+		for (const guid of guids) {
+			listedAccountGuids.add(guid);
+		}
+	}
+
+	// Filter out accounts that are already in active listings
+	const availableAccounts = accounts.filter(account => !listedAccountGuids.has(account.guid));
 
 	// Stream the items asynchronously
 	const items = scrapeCurrentOffers().catch((error) => {
@@ -22,7 +42,7 @@ export const load = async ({ locals }) => {
 	});
 
 	return {
-		accounts: accounts.map((acc) => ({
+		accounts: availableAccounts.map((acc) => ({
 			guid: acc.guid,
 			name: acc.name,
 			inventory: acc.inventoryRaw.split(',').filter((i) => i),

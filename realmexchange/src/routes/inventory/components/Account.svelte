@@ -20,6 +20,8 @@
 	} = $props();
 	let command = $state('');
 	let isRefreshing = $state(false);
+	let showListingConflictModal = $state(false);
+	let conflictingListing = $state<{id: string, askingPrice: any[], accountName: string} | null>(null);
 
 	// Group items by name and count quantities
 	let itemCounts = $derived.by(() => {
@@ -91,6 +93,17 @@
 								return;
 							}
 
+							// Check if listing cancellation is required
+							if (result.data?.requiresListingCancellation) {
+								conflictingListing = {
+									id: result.data.listingId as string,
+									askingPrice: result.data.askingPrice as any[],
+									accountName: result.data.accountName as string
+								};
+								showListingConflictModal = true;
+								return;
+							}
+
 							// If login was successful and we have an access token, set it
 							if (result.data?.accessToken && result.data?.timestamp) {
 								command = generateCommand(
@@ -158,6 +171,69 @@
 					}}
 				>
 					Copy
+				</Button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if showListingConflictModal && conflictingListing}
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
+			<h2 class="mb-4 text-center text-xl font-bold">Account In Active Listing</h2>
+			<p class="mb-4 text-center">
+				This account is currently listed for sale with the following asking price:
+			</p>
+			<div class="mb-4 flex flex-wrap gap-2 justify-center">
+				{#each conflictingListing.askingPrice as item}
+					<span class="rounded bg-blue-100 px-2 py-1 text-sm">
+						{item.name}{item.quantity > 1 ? ` (x${item.quantity})` : ''}
+					</span>
+				{/each}
+			</div>
+			<p class="mb-6 text-center text-sm text-gray-600">
+				To login to this account, you must cancel the listing first.
+			</p>
+			<div class="flex gap-3">
+				<form method="POST" action="?/cancelListingAndLogin" class="flex-1" use:enhance={async () => {
+					return async ({ result }) => {
+						showListingConflictModal = false;
+						conflictingListing = null;
+						
+						if (result.type !== 'success') {
+							alert('Failed to cancel listing and login to account');
+							return;
+						}
+
+						// Check for server-side error
+						if (result?.data?.error) {
+							alert(result.data.error as string);
+							return;
+						}
+
+						// If login was successful and we have an access token, set it
+						if (result.data?.accessToken && result.data?.timestamp) {
+							command = generateCommand(
+								result.data.accessToken as string,
+								result.data.timestamp as string
+							);
+						}
+					};
+				}}>
+					<input type="hidden" name="listingId" value={conflictingListing.id} />
+					<input type="hidden" name="accountName" value={conflictingListing.accountName} />
+					<Button type="submit" class="w-full cursor-pointer bg-red-600 hover:bg-red-700">
+						Cancel Listing & Login
+					</Button>
+				</form>
+				<Button 
+					class="flex-1 cursor-pointer" 
+					onclick={() => { 
+						showListingConflictModal = false; 
+						conflictingListing = null; 
+					}}
+				>
+					Cancel
 				</Button>
 			</div>
 		</div>

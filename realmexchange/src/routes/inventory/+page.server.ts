@@ -114,14 +114,45 @@ export const actions = {
             eq(table.account.name, name)
         ).limit(1).get();
 
+        if (!account) {
+            return { error: 'Account not found' };
+        }
+
+        // Check if this account is in any active listings
+        const activeListings = await db
+            .select({ 
+                id: table.tradeListing.id,
+                accountGuids: table.tradeListing.accountGuids,
+                askingPrice: table.tradeListing.askingPrice
+            })
+            .from(table.tradeListing)
+            .where(eq(table.tradeListing.status, 'active'));
+
+        let conflictingListing = null;
+        for (const listing of activeListings) {
+            const guids = JSON.parse(listing.accountGuids) as string[];
+            if (guids.includes(account.guid)) {
+                conflictingListing = {
+                    id: listing.id,
+                    askingPrice: JSON.parse(listing.askingPrice)
+                };
+                break;
+            }
+        }
+
+        if (conflictingListing) {
+            return { 
+                requiresListingCancellation: true, 
+                listingId: conflictingListing.id,
+                askingPrice: conflictingListing.askingPrice,
+                accountName: name
+            };
+        }
+
         // Get the HWID for the user
         const hwidRecord = await db.select({ hwid: table.user.hwid }).from(table.user).where(
             eq(table.user.id, locals.user.id)
         ).limit(1).get();
-
-        if (!account) {
-            return { error: 'Account not found' };
-        }
 
         if (!hwidRecord || hwidRecord.hwid === "") {
             return { error: 'HWID not set' };
@@ -177,6 +208,63 @@ export const actions = {
         }).where(eq(table.account.guid, account.guid));
 
         return { inventory: inventory.split(","), seasonal };
+    },
+    cancelListingAndLogin: async ({ locals, request }) => {
+        if (!locals.user) {
+            return { error: 'Not authenticated' };
+        }
+
+        // Grab the data from the form
+        const data = await request.formData();
+        const listingId = data.get('listingId');
+        const accountName = data.get('accountName');
+
+        if (typeof listingId !== 'string' || typeof accountName !== 'string') {
+            return { error: 'Invalid data' };
+        }
+
+        // Verify the user owns the listing
+        const listing = await db
+            .select()
+            .from(table.tradeListing)
+            .where(eq(table.tradeListing.id, listingId))
+            .limit(1)
+            .get();
+
+        if (!listing || listing.sellerId !== locals.user.id) {
+            return { error: 'Listing not found or you do not own it' };
+        }
+
+        // Cancel the listing
+        await db
+            .update(table.tradeListing)
+            .set({ status: 'cancelled' })
+            .where(eq(table.tradeListing.id, listingId));
+
+        // Now proceed with login
+        const account = await db.select({ guid: table.account.guid, password: table.account.password }).from(table.account).where(
+            eq(table.account.name, accountName)
+        ).limit(1).get();
+
+        if (!account) {
+            return { error: 'Account not found' };
+        }
+
+        // Get the HWID for the user
+        const hwidRecord = await db.select({ hwid: table.user.hwid }).from(table.user).where(
+            eq(table.user.id, locals.user.id)
+        ).limit(1).get();
+
+        if (!hwidRecord || hwidRecord.hwid === "") {
+            return { error: 'HWID not set' };
+        }
+
+        const { accessToken, timestamp } = await getAccessToken({...account, hwid: hwidRecord.hwid });
+        if (accessToken === null || timestamp === null) {
+            return { error: 'Failed to get access token' };
+        }
+
+        return { accessToken, timestamp };
     },
     submitHWID: async ({ locals, request }) => {
         if (!locals.user) {
