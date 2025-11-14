@@ -57,6 +57,13 @@
       "when": 1763011785066,
       "tag": "0007_same_sentinels",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1763050667491,
+      "tag": "0008_motionless_shriek",
+      "breakpoints": true
     }
   ]
 }

@@ -7,7 +7,6 @@ const handleDb: Handle = async ({ event, resolve }) => {
 	setDb(event.platform!.env.DB);
 
 	const response = await resolve(event);
-
 	return response;
 };
 
@@ -28,7 +27,7 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 		session = jwtSession.session;
 		user = jwtSession.user;
 	}
-	
+
 	if (!session || !user) {
 		const dbSession = await auth.validateSessionToken(sessionToken);
 		session = dbSession.session;
