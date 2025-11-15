@@ -197,7 +197,7 @@ export const actions = {
         }
 
         const { inventory, seasonal } = await loadAccountInventory({...account, hwid: hwidRecord.hwid });
-        if (inventory == null || seasonal == null) {
+        if (inventory == null) {
             return { error: 'Failed to load account inventory or seasonal status' };
         }
 
