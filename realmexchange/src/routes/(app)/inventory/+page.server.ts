@@ -4,7 +4,7 @@ import { db } from '$lib/server/db/index.js';
 import * as table from '$lib/server/db/schema.js';
 import { createAccount, getAccessToken, loadAccountInventory } from '$lib/server/realmapi.js';
 import { and, eq } from 'drizzle-orm';
-import { mockCreateAccount, mockCreateAccount2 } from '../../../test/mock.js';
+import { mockCreateAccount, mockCreateAccount2 } from '../../../../test/mock.js';
 import { redirect } from '@sveltejs/kit';
 
 export const load = async ({ locals }) => {
