@@ -11,9 +11,15 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<header class="border-b">
-	<NavigationMenu.Root class="mr-3 ml-auto p-2">
-		<NavigationMenu.List class="ml-auto flex items-center space-x-6">
+<header class="border-b flex justify-between items-center p-2">
+	<div class="flex items-center">
+		<a href="/" class="flex items-center">
+			<img src={favicon} alt="Realm Exchange" class="h-8 w-8 mr-2" />
+			<span class="text-lg font-bold">Realm Exchange</span>
+		</a>
+	</div>
+	<NavigationMenu.Root>
+		<NavigationMenu.List class="flex items-center space-x-6">
 			{#if data.user}
 				<NavigationMenu.Item>
 					<NavigationMenu.Link href="/" class="px-3 py-2 text-sm font-medium hover:text-primary">
