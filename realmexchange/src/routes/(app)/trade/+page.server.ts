@@ -2,7 +2,7 @@ import { scrapeCurrentOffers } from '$lib/realmeye';
 import { db } from '$lib/server/db/index.js';
 import * as table from '$lib/server/db/schema.js';
 import { redirect } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 export const load = async ({ locals }) => {
 	if (!locals.user) {
@@ -10,30 +10,26 @@ export const load = async ({ locals }) => {
 	}
 
 	// Run both database queries in parallel
-	const [activeListings, accounts] = await Promise.all([
-		// Get all active trade listings to find accounts that are already listed
-		db
+	const activeListings = await db
 			.select({ accountGuids: table.tradeListing.accountGuids })
 			.from(table.tradeListing)
-			.where(eq(table.tradeListing.status, 'active')),
-		// Load all verified accounts for this user
-		db
-			.select()
-			.from(table.account)
-			.where(eq(table.account.ownerId, locals.user.id))
-	]);
+			.where(eq(table.tradeListing.status, 'active'))
 
-	// Collect all account GUIDs that are currently in active listings
-	const listedAccountGuids = new Set<string>();
+	// Collect all account account names that are currently in active listings
+	const listedAccountNames = new Set<string>();
+	const allGuids: string[] = [];
 	for (const listing of activeListings) {
 		const guids = JSON.parse(listing.accountGuids) as string[];
-		for (const guid of guids) {
-			listedAccountGuids.add(guid);
-		}
+		allGuids.push(...guids);
 	}
-
-	// Filter out accounts that are already in active listings
-	const availableAccounts = accounts.filter(account => !listedAccountGuids.has(account.guid));
+	const uniqueGuids = [...new Set(allGuids)];
+	const accounts = await db
+		.select({ name: table.account.name })
+		.from(table.account)
+		.where(inArray(table.account.guid, uniqueGuids));
+	for (const account of accounts) {
+		listedAccountNames.add(account.name);
+	}
 
 	// Stream the items asynchronously
 	const items = scrapeCurrentOffers().catch((error) => {
@@ -42,12 +38,7 @@ export const load = async ({ locals }) => {
 	});
 
 	return {
-		accounts: availableAccounts.map((acc) => ({
-			guid: acc.guid,
-			name: acc.name,
-			inventory: acc.inventoryRaw.split(',').filter((i) => i),
-			seasonal: acc.seasonal == 1
-		})),
+		listedAccountNames,
 		items
 	};
 };
@@ -59,26 +50,28 @@ export const actions = {
 		}
 
 		const data = await request.formData();
-		const accountGuids = data.get('accountGuids');
+		const accountNames = data.get('accountNames');
 		const askingPrice = data.get('askingPrice');
 
-		if (typeof accountGuids !== 'string' || typeof askingPrice !== 'string') {
+		if (typeof accountNames !== 'string' || typeof askingPrice !== 'string') {
 			return { error: 'Invalid data' };
 		}
 
 		// Verify the user owns all the accounts
-		const guids = JSON.parse(accountGuids);
-		for (const guid of guids) {
+		const names = JSON.parse(accountNames) as string[];
+		const guids: string[] = [];
+		for (const name of names) {
 			const account = await db
 				.select()
 				.from(table.account)
-				.where(eq(table.account.guid, guid))
+				.where(eq(table.account.name, name))
 				.limit(1)
 				.get();
 
 			if (!account || account.ownerId !== locals.user.id) {
 				return { error: 'You do not own one or more of these accounts' };
 			}
+			guids.push(account.guid);
 		}
 
 		// Create the listing
@@ -86,7 +79,7 @@ export const actions = {
 		await db.insert(table.tradeListing).values({
 			id: listingId,
 			sellerId: locals.user.id,
-			accountGuids: accountGuids,
+			accountGuids: JSON.stringify(guids),
 			askingPrice: askingPrice,
 			status: 'active',
 			createdAt: new Date()

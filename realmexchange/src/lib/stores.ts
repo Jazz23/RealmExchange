@@ -1,6 +1,28 @@
 import { writable } from 'svelte/store';
+import { browser } from '$app/environment';
 
-export const accounts = writable<{ name: string; inventory: string[]; seasonal: boolean }[]>([]);
+export function localStore<T>(key: string, initial: T) {
+    const store = writable(initial, (set) => {
+        if (!browser) return;
+
+        // Load from localStorage
+        const json = localStorage.getItem(key);
+        if (json) set(JSON.parse(json));
+
+        // Return a cleanup function (optional)
+        return () => {};
+    });
+
+    // Subscribe and save to localStorage
+    store.subscribe((value) => {
+        if (browser) localStorage.setItem(key, JSON.stringify(value));
+    });
+
+    return store;
+}
+
+
+export const accounts = localStore<{ name: string; inventory: string[]; seasonal: boolean }[]>("accounts", []);
 
 // Alert store for global toast notifications
 export interface AlertState {

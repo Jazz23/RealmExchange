@@ -5,22 +5,17 @@ export async function mockCreateAccount(): Promise<Account> {
     // Wait for 1 second to simulate network delay
     await new Promise(resolve => setTimeout(resolve, 1000));
 
+    // Generate a random number from 1-10000 to append to the guid and password
+    const randomNum = Math.floor(Math.random() * 10000) + 1;
+
     return {
-        guid: `asdf11@${DOMAIN}`,
-        name: "Asdfjkwejp",
-        password: `asdf11@${DOMAIN}`,
+        guid: `${randomNum}@hah.gotem`,
+        name: `TestAccount${randomNum}`,
+        password: `oogabooga`,
         verificationLink: "https://www.realmofthemadgod.com/account/v?b=cE6D-5qkMRyY6M9j&a=6113444256317440"
     }
 }
 
-export async function mockCreateAccount2(): Promise<Account> {
-    // Wait for 1 second to simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    return {
-        guid: `asdf12@${DOMAIN}`,
-        name: "Asdfadsfddd",
-        password: `asdf12@${DOMAIN}`,
-        verificationLink: "https://www.realmofthemadgod.com/account/v?b=cE6D-5qkMRyY6M9j&a=6113444256317440"
-    }
+export async function mockRefreshAccount() {
+            return { inventoryRaw: "Potion of Attack,Potion of Defense", seasonal: false };
 }

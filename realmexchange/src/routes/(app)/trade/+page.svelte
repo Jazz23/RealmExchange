@@ -3,7 +3,8 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { goto } from '$app/navigation';
 	import Account from '../inventory/components/Account.svelte';
-	import { alertStore } from '$lib/stores';
+	import { alertStore } from '$lib/stores'
+	import { accounts } from '$lib/stores';
 
 	let { data } = $props();
 	let selectedAccounts = $state<string[]>([]);
@@ -16,6 +17,8 @@
 	// Handle items as a promise
 	let items = $state<string[]>([]);
 	let itemsLoading = $state(true);
+
+	const availableAccounts = $accounts.filter(account => !data.listedAccountNames.has(account.name));
 
 	// Resolve the items promise when it becomes available
 	$effect(() => {
@@ -35,11 +38,11 @@
 		}
 	});
 
-	function toggleAccount(guid: string) {
-		if (selectedAccounts.includes(guid)) {
-			selectedAccounts = selectedAccounts.filter((g) => g !== guid);
+	function toggleAccount(name: string) {
+		if (selectedAccounts.includes(name)) {
+			selectedAccounts = selectedAccounts.filter((g) => g !== name);
 		} else {
-			selectedAccounts = [...selectedAccounts, guid];
+			selectedAccounts = [...selectedAccounts, name];
 		}
 	}
 
@@ -86,18 +89,18 @@
 	<div class="mb-8">
 		<h2 class="mb-4 text-2xl font-bold">Select Accounts to Sell</h2>
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-			{#each data.accounts as account}
+			{#each availableAccounts as account}
 				<Account
 					name={account.name}
 					inventory={account.inventory}
 					seasonal={account.seasonal}
 					mode="selectable"
-					selected={selectedAccounts.includes(account.guid)}
-					onClick={() => toggleAccount(account.guid)}
+					selected={selectedAccounts.includes(account.name)}
+					onClick={() => toggleAccount(account.name)}
 				/>
 			{/each}
 		</div>
-		{#if data.accounts.length === 0}
+		{#if availableAccounts.length === 0}
 			<p class="text-gray-600">
 				No accounts available. Please add accounts in the inventory page first.
 			</p>
@@ -178,7 +181,7 @@
 			};
 		}}
 	>
-		<input type="hidden" name="accountGuids" value={JSON.stringify(selectedAccounts)} />
+		<input type="hidden" name="accountNames" value={JSON.stringify(selectedAccounts)} />
 		<input type="hidden" name="askingPrice" value={JSON.stringify(askingPrice)} />
 		<Button
 			type="submit"

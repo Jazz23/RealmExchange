@@ -4,7 +4,7 @@ import { db } from '$lib/server/db/index.js';
 import * as table from '$lib/server/db/schema.js';
 import { createAccount, getAccessToken, loadAccountInventory } from '$lib/server/realmapi.js';
 import { and, eq } from 'drizzle-orm';
-import { mockCreateAccount, mockCreateAccount2 } from '../../../../test/mock.js';
+import { mockCreateAccount, mockRefreshAccount } from '../../../../test/mock.js';
 import { redirect } from '@sveltejs/kit';
 
 export const load = async ({ locals }) => {
@@ -12,17 +12,12 @@ export const load = async ({ locals }) => {
         return redirect(302, '/login');
     }
 
-    // Load all accounts for this user
-    const accounts = await db.select({ name: table.account.name, inventoryRaw: table.account.inventoryRaw, seasonal: table.account.seasonal }).from(table.account).where(
-        eq(table.account.ownerId, locals.user.id)
-    );
-
     // Check if the user needs to set their HWID
     const hwid = await db.select({ hwid: table.user.hwid }).from(table.user).where(
         eq(table.user.id, locals.user.id)
     ).limit(1).get();
 
-    return { accounts: accounts.map(acc => ({ name: acc.name, inventory: acc.inventoryRaw.split(","), seasonal: acc.seasonal == 1 })), needsHWID: hwid!.hwid === "" };
+    return { needsHWID: hwid!.hwid === "" };
 }
 
 export const actions = {
@@ -120,7 +115,7 @@ export const actions = {
 
         // Check if this account is in any active listings
         const activeListings = await db
-            .select({ 
+            .select({
                 id: table.tradeListing.id,
                 accountGuids: table.tradeListing.accountGuids,
                 askingPrice: table.tradeListing.askingPrice
@@ -141,8 +136,8 @@ export const actions = {
         }
 
         if (conflictingListing) {
-            return { 
-                requiresListingCancellation: true, 
+            return {
+                requiresListingCancellation: true,
                 listingId: conflictingListing.id,
                 askingPrice: conflictingListing.askingPrice,
                 accountName: name
@@ -158,7 +153,7 @@ export const actions = {
             return { error: 'HWID not set' };
         }
 
-        const { accessToken, timestamp } = await getAccessToken({...account, hwid: hwidRecord.hwid });
+        const { accessToken, timestamp } = await getAccessToken({ ...account, hwid: hwidRecord.hwid });
         if (accessToken === null || timestamp === null) {
             return { error: 'Failed to get access token' };
         }
@@ -183,20 +178,36 @@ export const actions = {
             eq(table.account.name, name)
         ).limit(1).get();
 
+        if (!account) {
+            return { error: 'Account not found' };
+        }
+
+        // Check if the name starts with TestAccount
+        if (name.startsWith("TestAccount")) {
+            // In dev, use the mock refresh
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const { inventoryRaw, seasonal } = await mockRefreshAccount();
+
+            // Update the account inventory in the DB
+            await db.update(table.account).set({
+                inventoryRaw,
+                seasonal: seasonal ? 1 : 0
+            }).where(eq(table.account.guid, account.guid));
+
+            return { inventory: inventoryRaw.split(","), seasonal };
+        }
+
         // Get the HWID for the user
         const hwidRecord = await db.select({ hwid: table.user.hwid }).from(table.user).where(
             eq(table.user.id, locals.user.id)
         ).limit(1).get();
 
-        if (!account) {
-            return { error: 'Account not found' };
-        }
 
         if (!hwidRecord || hwidRecord.hwid === "") {
             return { error: 'HWID not set' };
         }
 
-        const { inventory, seasonal } = await loadAccountInventory({...account, hwid: hwidRecord.hwid });
+        const { inventory, seasonal } = await loadAccountInventory({ ...account, hwid: hwidRecord.hwid });
         if (inventory == null) {
             return { error: 'Failed to load account inventory or seasonal status' };
         }
@@ -259,7 +270,7 @@ export const actions = {
             return { error: 'HWID not set' };
         }
 
-        const { accessToken, timestamp } = await getAccessToken({...account, hwid: hwidRecord.hwid });
+        const { accessToken, timestamp } = await getAccessToken({ ...account, hwid: hwidRecord.hwid });
         if (accessToken === null || timestamp === null) {
             return { error: 'Failed to get access token' };
         }
