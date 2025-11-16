@@ -9,10 +9,8 @@
 	let doneSettingHWID = $state(!data.needsHWID);
 
 	onMount(() => {
-		// If accounts store is empty (not loaded from localStorage), set from server data
-		if ($accounts.length === 0) {
-			accounts.set(data.accounts);
-		}
+		// Set accounts from server data
+		accounts.set(data.accounts);
 	});
 </script>
 

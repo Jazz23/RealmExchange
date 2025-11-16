@@ -9,6 +9,22 @@ export const load = async ({ locals }) => {
 		return redirect(302, '/login');
 	}
 
+	// Load user's accounts
+	const userAccounts = await db
+		.select({
+			name: table.account.name,
+			inventoryRaw: table.account.inventoryRaw,
+			seasonal: table.account.seasonal
+		})
+		.from(table.account)
+		.where(eq(table.account.ownerId, locals.user.id));
+
+	const accounts = userAccounts.map(acc => ({
+		name: acc.name,
+		inventory: acc.inventoryRaw.split(',').filter(i => i),
+		seasonal: acc.seasonal === 1
+	}));
+
 	// Run both database queries in parallel
 	const activeListings = await db
 			.select({ accountNames: table.tradeListing.accountNames })
@@ -23,11 +39,11 @@ export const load = async ({ locals }) => {
 		allNames.push(...names);
 	}
 	const uniqueNames = [...new Set(allNames)];
-	const accounts = await db
+	const accountsInListings = await db
 		.select({ name: table.account.name })
 		.from(table.account)
 		.where(inArray(table.account.name, uniqueNames));
-	for (const account of accounts) {
+	for (const account of accountsInListings) {
 		listedAccountNames.add(account.name);
 	}
 
@@ -38,6 +54,7 @@ export const load = async ({ locals }) => {
 	});
 
 	return {
+		accounts,
 		listedAccountNames,
 		items
 	};

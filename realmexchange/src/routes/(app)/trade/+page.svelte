@@ -6,6 +6,7 @@
 	import { alertStore } from '$lib/stores'
 	import { accounts } from '$lib/stores';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
+	import { onMount } from 'svelte';
 
 	let { data } = $props();
 	let selectedAccounts = $state<string[]>([]);
@@ -20,6 +21,11 @@
 	let itemsLoading = $state(true);
 
 	const availableAccounts = $accounts.filter(account => !data.listedAccountNames.has(account.name));
+
+	// Set accounts from server data
+	onMount(() => {
+		accounts.set(data.accounts);
+	});
 
 	// Resolve the items promise when it becomes available
 	$effect(() => {
