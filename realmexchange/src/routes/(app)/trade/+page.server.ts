@@ -1,6 +1,7 @@
 import { scrapeCurrentOffers } from '$lib/realmeye';
 import { db } from '$lib/server/db/index.js';
 import * as table from '$lib/server/db/schema.js';
+import { getAccessToken } from '$lib/server/realmapi.js';
 import { redirect } from '@sveltejs/kit';
 import { eq, inArray, and, ne } from 'drizzle-orm';
 
@@ -27,9 +28,9 @@ export const load = async ({ locals }) => {
 
 	// Run both database queries in parallel
 	const userActiveListings = await db
-			.select({ accountNames: table.tradeListing.accountNames })
-			.from(table.tradeListing)
-			.where(eq(table.tradeListing.status, 'active'))
+		.select({ accountNames: table.tradeListing.accountNames })
+		.from(table.tradeListing)
+		.where(eq(table.tradeListing.status, 'active'))
 
 	// Collect all account account names that are currently in active listings
 	const listedAccountNames = new Set<string>();
@@ -95,10 +96,10 @@ export const load = async ({ locals }) => {
 
 					return acc
 						? {
-								name: acc.name,
-								inventory: acc.inventoryRaw.split(',').filter((i: string) => i),
-								seasonal: acc.seasonal === 1
-							}
+							name: acc.name,
+							inventory: acc.inventoryRaw.split(',').filter((i: string) => i),
+							seasonal: acc.seasonal === 1
+						}
 						: null;
 				})
 			);
@@ -136,10 +137,10 @@ export const load = async ({ locals }) => {
 
 							return acc
 								? {
-										name: acc.name,
-										inventory: acc.inventoryRaw.split(',').filter((i: string) => i),
-										seasonal: acc.seasonal === 1
-									}
+									name: acc.name,
+									inventory: acc.inventoryRaw.split(',').filter((i: string) => i),
+									seasonal: acc.seasonal === 1
+								}
 								: null;
 						})
 					);
@@ -182,7 +183,7 @@ export const actions = {
 			return { error: 'Invalid data' };
 		}
 
-		// Verify the user owns all the accounts
+		// Verify the user owns all the accounts and refresh the access token so users can't log back in
 		const names = JSON.parse(accountNames) as string[];
 		for (const name of names) {
 			const account = await db
@@ -194,6 +195,16 @@ export const actions = {
 
 			if (!account || account.ownerId !== locals.user.id) {
 				return { error: 'You do not own one or more of these accounts' };
+			}
+
+			// Refresh access token
+			if (name.startsWith("TestAccount")) {
+				continue;
+			}
+
+			const { accessToken } = await getAccessToken({...account, hwid: ""}); // HWID doesn't matter since we're not logging in
+			if (accessToken === null) {
+				return { error: `Error logging into account ${name}` };
 			}
 		}
 

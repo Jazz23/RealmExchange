@@ -204,7 +204,7 @@
 
 	{#if data.userListings && data.userListings.length > 0}
 		<div class="mt-12">
-			<h2 class="mb-4 text-2xl font-bold">My Listings</h2>
+			<h2 class="mb-4 text-3xl font-bold">My Listings</h2>
 			<div class="space-y-4">
 				{#each data.userListings as listing (listing.id)}
 					<TradeListing

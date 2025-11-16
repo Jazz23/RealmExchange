@@ -1,5 +1,6 @@
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { getAccessToken } from '$lib/server/realmapi';
 import { eq, and } from 'drizzle-orm';
 
 export async function load({ locals }) {
@@ -45,10 +46,10 @@ export async function load({ locals }) {
 
 					return acc
 						? {
-								name: acc.name,
-								inventory: acc.inventoryRaw.split(',').filter((i: string) => i),
-								seasonal: acc.seasonal === 1
-							}
+							name: acc.name,
+							inventory: acc.inventoryRaw.split(',').filter((i: string) => i),
+							seasonal: acc.seasonal === 1
+						}
 						: null;
 				})
 			);
@@ -124,7 +125,7 @@ export const actions = {
 			// This is a counter offer acceptance - validate selected accounts have sufficient items
 			buyerAccountNames = JSON.parse(offerAccountNames);
 
-			// Verify the buyer owns all the offered accounts
+			// Verify the buyer owns all the offered accounts and that they are not logged into
 			for (const name of buyerAccountNames) {
 				const account = await db
 					.select()
@@ -136,11 +137,21 @@ export const actions = {
 				if (!account || account.ownerId !== locals.user.id) {
 					return { error: 'You do not own one or more of the offered accounts' };
 				}
+
+				// Refresh access token
+				if (name.startsWith("TestAccount")) {
+					continue;
+				}
+
+				const { accessToken } = await getAccessToken({ ...account, hwid: "" }); // HWID doesn't matter since we're not logging in
+				if (accessToken === null) {
+					return { error: `Error logging into account ${name}` };
+				}
 			}
 
 			// Validate that the selected accounts contain sufficient items for the asking price
 			const askingPriceItems = JSON.parse(listing.askingPrice);
-			
+
 			// Count total items across selected buyer accounts, grouped by seasonal status
 			const buyerItemCounts: Record<string, { seasonal: number; nonSeasonal: number }> = {};
 			for (const name of buyerAccountNames) {
@@ -171,21 +182,21 @@ export const actions = {
 			for (const requiredItem of askingPriceItems) {
 				const availableCount = buyerItemCounts[requiredItem.name];
 				if (!availableCount) {
-					return { 
-						error: `Selected accounts have insufficient ${requiredItem.name} (${requiredItem.seasonal ? 'Seasonal' : 'Not Seasonal'}). You have 0 but need ${requiredItem.quantity}.` 
+					return {
+						error: `Selected accounts have insufficient ${requiredItem.name} (${requiredItem.seasonal ? 'Seasonal' : 'Not Seasonal'}). You have 0 but need ${requiredItem.quantity}.`
 					};
 				}
 				const countFromCorrectAccounts = requiredItem.seasonal ? availableCount.seasonal : availableCount.nonSeasonal;
 				if (countFromCorrectAccounts < requiredItem.quantity) {
-					return { 
-						error: `Selected accounts have insufficient ${requiredItem.name} (${requiredItem.seasonal ? 'Seasonal' : 'Not Seasonal'}). You have ${countFromCorrectAccounts} but need ${requiredItem.quantity}.` 
+					return {
+						error: `Selected accounts have insufficient ${requiredItem.name} (${requiredItem.seasonal ? 'Seasonal' : 'Not Seasonal'}). You have ${countFromCorrectAccounts} but need ${requiredItem.quantity}.`
 					};
 				}
 			}
 		} else {
 			// Direct acceptance - validate that buyer has required items
 			const askingPriceItems = JSON.parse(listing.askingPrice);
-			
+
 			// Get all buyer's accounts
 			const buyerAccounts = await db
 				.select({
@@ -208,14 +219,14 @@ export const actions = {
 			for (const requiredItem of askingPriceItems) {
 				const availableCount = buyerItemCounts[requiredItem.name] || 0;
 				if (availableCount < requiredItem.quantity) {
-					return { 
-						error: `Insufficient ${requiredItem.name}. You have ${availableCount} but need ${requiredItem.quantity}.` 
+					return {
+						error: `Insufficient ${requiredItem.name}. You have ${availableCount} but need ${requiredItem.quantity}.`
 					};
 				}
 			}
 
 			// Find accounts that contain the required items and transfer them
-			const requiredItems = askingPriceItems.reduce((acc: Record<string, number>, item: {name: string, quantity: number}) => {
+			const requiredItems = askingPriceItems.reduce((acc: Record<string, number>, item: { name: string, quantity: number }) => {
 				acc[item.name] = item.quantity;
 				return acc;
 			}, {});
@@ -335,6 +346,16 @@ export const actions = {
 
 			if (!account || account.ownerId !== locals.user.id) {
 				return { error: 'You do not own one or more of these accounts' };
+			}
+
+			// Refresh access token
+			if (name.startsWith("TestAccount")) {
+				continue;
+			}
+
+			const { accessToken } = await getAccessToken({ ...account, hwid: "" }); // HWID doesn't matter since we're not logging in
+			if (accessToken === null) {
+				return { error: `Error logging into account ${name}` };
 			}
 		}
 
