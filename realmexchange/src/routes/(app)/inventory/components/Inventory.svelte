@@ -9,6 +9,7 @@
 			name={account.name}
 			inventory={account.inventory}
 			seasonal={account.seasonal}
+			isLocked={account.isLocked}
 		/>
 	{/each}
 </div>

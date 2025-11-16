@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 
 
-export const accounts = writable<{ name: string; inventory: string[]; seasonal: boolean }[]>([]);
+export const accounts = writable<{ name: string; inventory: string[]; seasonal: boolean; isLocked?: boolean }[]>([]);
 
 // Alert store for global toast notifications
 export interface AlertState {

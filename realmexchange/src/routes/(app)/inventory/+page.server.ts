@@ -27,10 +27,53 @@ export const load = async ({ locals }) => {
         .from(table.account)
         .where(eq(table.account.ownerId, locals.user.id));
 
+    // Find accounts that are part of active offers (accounts being offered by this user)
+    const activeOffers = await db
+        .select({
+            offerAccountNames: table.tradeOffer.offerAccountNames
+        })
+        .from(table.tradeOffer)
+        .innerJoin(table.tradeListing, eq(table.tradeOffer.listingId, table.tradeListing.id))
+        .where(and(
+            eq(table.tradeOffer.status, 'pending'),
+            eq(table.tradeListing.sellerId, locals.user.id)
+        ));
+
+    // Find accounts that are part of active listings (accounts being sold by this user)
+    const activeListings = await db
+        .select({
+            accountNames: table.tradeListing.accountNames
+        })
+        .from(table.tradeListing)
+        .where(and(
+            eq(table.tradeListing.sellerId, locals.user.id),
+            eq(table.tradeListing.status, 'active')
+        ));
+
+    // Extract all account names that are part of active offers or listings
+    const lockedAccounts = new Set<string>();
+    
+    // Add accounts from active offers
+    for (const offer of activeOffers) {
+        const accountNames = JSON.parse(offer.offerAccountNames) as string[];
+        for (const name of accountNames) {
+            lockedAccounts.add(name);
+        }
+    }
+    
+    // Add accounts from active listings
+    for (const listing of activeListings) {
+        const accountNames = JSON.parse(listing.accountNames) as string[];
+        for (const name of accountNames) {
+            lockedAccounts.add(name);
+        }
+    }
+
     const accounts = userAccounts.map(acc => ({
         name: acc.name,
         inventory: acc.inventoryRaw.split(',').filter(i => i),
-        seasonal: acc.seasonal === 1
+        seasonal: acc.seasonal === 1,
+        isLocked: lockedAccounts.has(acc.name)
     }));
 
     return { needsHWID: hwid!.hwid === "", accounts };
@@ -120,6 +163,42 @@ export const actions = {
             return { error: 'Invalid account name' };
         }
 
+        // Check if account is currently locked (in active trade)
+        const [activeListings, activeOffers] = await Promise.all([
+            db
+                .select({ accountNames: table.tradeListing.accountNames })
+                .from(table.tradeListing)
+                .where(eq(table.tradeListing.status, 'active')),
+            db
+                .select({ offerAccountNames: table.tradeOffer.offerAccountNames })
+                .from(table.tradeOffer)
+                .where(eq(table.tradeOffer.status, 'pending'))
+        ]);
+
+        // Check if this account is in any active listing or offer
+        let isLocked = false;
+        for (const listing of activeListings) {
+            const names = JSON.parse(listing.accountNames) as string[];
+            if (names.includes(name)) {
+                isLocked = true;
+                break;
+            }
+        }
+        
+        if (!isLocked) {
+            for (const offer of activeOffers) {
+                const names = JSON.parse(offer.offerAccountNames) as string[];
+                if (names.includes(name)) {
+                    isLocked = true;
+                    break;
+                }
+            }
+        }
+
+        if (isLocked) {
+            return { error: 'This account is currently involved in an active trade and cannot be logged into.' };
+        }
+
         // Find the account by name from the DB
         const account = await db.select({ name: table.account.name, guid: table.account.guid, password: table.account.password }).from(table.account).where(
             eq(table.account.name, name)
@@ -127,34 +206,6 @@ export const actions = {
 
         if (!account) {
             return { error: 'Account not found' };
-        }
-
-        const activeListings = await db
-            .select({ 
-                id: table.tradeListing.id,
-                accountNames: table.tradeListing.accountNames,
-                askingPrice: table.tradeListing.askingPrice
-            })
-            .from(table.tradeListing)
-            .where(eq(table.tradeListing.status, 'active'));
-
-        let conflictingListing = null;
-        for (const listing of activeListings) {
-            const names = JSON.parse(listing.accountNames) as string[];
-            if (names.includes(account.name)) {
-                conflictingListing = {
-                    id: listing.id,
-                    askingPrice: JSON.parse(listing.askingPrice)
-                };
-                break;
-            }
-        }        if (conflictingListing) {
-            return {
-                requiresListingCancellation: true,
-                listingId: conflictingListing.id,
-                askingPrice: conflictingListing.askingPrice,
-                accountName: name
-            };
         }
 
         // Get the HWID for the user
@@ -184,6 +235,42 @@ export const actions = {
 
         if (typeof name !== 'string') {
             return { error: 'Invalid account name' };
+        }
+
+        // Check if account is currently locked (in active trade)
+        const [activeListings, activeOffers] = await Promise.all([
+            db
+                .select({ accountNames: table.tradeListing.accountNames })
+                .from(table.tradeListing)
+                .where(eq(table.tradeListing.status, 'active')),
+            db
+                .select({ offerAccountNames: table.tradeOffer.offerAccountNames })
+                .from(table.tradeOffer)
+                .where(eq(table.tradeOffer.status, 'pending'))
+        ]);
+
+        // Check if this account is in any active listing or offer
+        let isLocked = false;
+        for (const listing of activeListings) {
+            const names = JSON.parse(listing.accountNames) as string[];
+            if (names.includes(name)) {
+                isLocked = true;
+                break;
+            }
+        }
+        
+        if (!isLocked) {
+            for (const offer of activeOffers) {
+                const names = JSON.parse(offer.offerAccountNames) as string[];
+                if (names.includes(name)) {
+                    isLocked = true;
+                    break;
+                }
+            }
+        }
+
+        if (isLocked) {
+            return { error: 'This account is currently involved in an active trade and cannot be refreshed.' };
         }
 
         // Find the account by name from the DB
@@ -264,6 +351,42 @@ export const actions = {
             .update(table.tradeListing)
             .set({ status: 'cancelled' })
             .where(eq(table.tradeListing.id, listingId));
+
+        // After cancelling the listing, check if account is still in any other active trades
+        const [remainingListings, activeOffers] = await Promise.all([
+            db
+                .select({ accountNames: table.tradeListing.accountNames })
+                .from(table.tradeListing)
+                .where(eq(table.tradeListing.status, 'active')),
+            db
+                .select({ offerAccountNames: table.tradeOffer.offerAccountNames })
+                .from(table.tradeOffer)
+                .where(eq(table.tradeOffer.status, 'pending'))
+        ]);
+
+        // Check if this account is still in any other active listing or offer
+        let isStillLocked = false;
+        for (const listing of remainingListings) {
+            const names = JSON.parse(listing.accountNames) as string[];
+            if (names.includes(accountName)) {
+                isStillLocked = true;
+                break;
+            }
+        }
+        
+        if (!isStillLocked) {
+            for (const offer of activeOffers) {
+                const names = JSON.parse(offer.offerAccountNames) as string[];
+                if (names.includes(accountName)) {
+                    isStillLocked = true;
+                    break;
+                }
+            }
+        }
+
+        if (isStillLocked) {
+            return { error: 'This account is still involved in another active trade and cannot be logged into.' };
+        }
 
         // Now proceed with login
         const account = await db.select({ name: table.account.name, guid: table.account.guid, password: table.account.password }).from(table.account).where(

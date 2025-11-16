@@ -14,6 +14,8 @@
 	let askingPrice = $state<{name: string, quantity: number, seasonal: boolean}[]>([]);
 	let itemSearch = $state('');
 	let isSubmitting = $state(false);
+	let selectedListing = $state<any>(null);
+	let showCounterOffersModal = $state(false);
 
 	// Handle items as a promise
 	let items = $state<string[]>([]);
@@ -60,6 +62,44 @@
 		askingPrice = askingPrice.map((item) =>
 			item.name === itemName ? { ...item, quantity: Math.max(1, quantity) } : item
 		);
+	}
+
+	function openCounterOffersModal(listing: any) {
+		selectedListing = listing;
+		showCounterOffersModal = true;
+	}
+
+	// Helper function to aggregate items from accounts
+	function getOfferedItems(accounts: any[]) {
+		const itemData: Record<string, { count: number; isSeasonal: boolean }> = {};
+		
+		if (accounts && Array.isArray(accounts)) {
+			for (const account of accounts) {
+				if (account.inventory && Array.isArray(account.inventory)) {
+					const accountSeasonal = account.seasonal;
+					for (const item of account.inventory) {
+						if (item && typeof item === 'string') {
+							if (!itemData[item]) {
+								itemData[item] = { count: 0, isSeasonal: accountSeasonal };
+							}
+							itemData[item].count += 1;
+							// If any account containing this item is seasonal, mark it as seasonal
+							if (accountSeasonal) {
+								itemData[item].isSeasonal = true;
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		return Object.entries(itemData)
+			.map(([itemName, data]) => ({
+				name: itemName,
+				display: data.count > 1 ? `${itemName} (x${data.count})` : itemName,
+				isSeasonal: data.isSeasonal
+			}))
+			.sort((a, b) => a.name.localeCompare(b.name));
 	}
 </script>
 
@@ -173,6 +213,7 @@
 						showAccountsAsComponents={false}
 						showAllItems={true}
 						getAllListingItems={getAllListingItems}
+						onViewCounterOffers={openCounterOffersModal}
 					/>
 				{/each}
 			</div>
@@ -185,4 +226,95 @@
 		<AlertTitle>{$alertStore.type === 'error' ? 'Error' : 'Success'}</AlertTitle>
 		<AlertDescription>{$alertStore.message}</AlertDescription>
 	</Alert>
+{/if}
+
+<!-- Counter Offers Modal -->
+{#if showCounterOffersModal && selectedListing}
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+		<div class="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white p-6">
+			<h2 class="mb-4 text-2xl font-bold">Counter Offers for Your Listing</h2>
+
+			<div class="mb-4">
+				<h3 class="mb-2 font-bold">Your Listing:</h3>
+				<div class="rounded border p-4 bg-gray-50">
+					<div class="mb-2">
+						<span class="font-semibold">Items in Listing:</span>
+						<div class="flex flex-wrap gap-1 mt-1">
+							{#each getAllListingItems(selectedListing) as item}
+								<span class="rounded bg-green-100 px-2 py-1 text-sm">
+									{item.display} ({item.isSeasonal ? 'Seasonal' : 'Not Seasonal'})
+								</span>
+							{/each}
+						</div>
+					</div>
+					<div class="mb-2">
+						<span class="font-semibold">Asking Price:</span>
+						<div class="flex flex-wrap gap-1 mt-1">
+							{#each selectedListing.askingPriceItems as item}
+								<span class="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-sm">
+									{item.name} × {item.quantity}
+									{#if item.seasonal}
+										<span class="text-orange-600">(Seasonal)</span>
+									{/if}
+								</span>
+							{/each}
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="mb-4">
+				<h3 class="mb-2 font-bold">Counter Offers ({selectedListing.counterOffers.length}):</h3>
+				<div class="space-y-4">
+					{#each selectedListing.counterOffers as offer (offer.id)}
+						<div class="rounded border p-4">
+							<div class="mb-2">
+								<span class="font-semibold">From:</span>
+								<span class="ml-2">{offer.buyerUsername}</span>
+								<span class="ml-4 text-sm text-gray-600">
+									{new Date(offer.createdAt).toLocaleDateString()}
+								</span>
+							</div>
+							<div class="mb-2">
+								<span class="font-semibold">Offered Items:</span>
+								<div class="flex flex-wrap gap-1 mt-1">
+									{#each getOfferedItems(offer.accounts) as item}
+										<span class="rounded bg-green-100 px-2 py-1 text-sm">
+											{item.display} ({item.isSeasonal ? 'Seasonal' : 'Not Seasonal'})
+										</span>
+									{/each}
+								</div>
+							</div>
+							<div class="flex gap-2">
+								<form
+									method="POST"
+									action="?/acceptCounterOffer"
+									use:enhance={() => {
+										showCounterOffersModal = false;
+										return async ({ result }) => {
+											if (result.type === 'success') {
+												if (result.data?.error) {
+													alertStore.show(result.data.error as string, 'error');
+												} else {
+													alertStore.show('Counter offer accepted! Trade completed.');
+													await invalidateAll();
+												}
+											}
+										};
+									}}
+								>
+									<input type="hidden" name="offerId" value={offer.id} />
+									<Button type="submit" class="cursor-pointer">Accept This Offer</Button>
+								</form>
+							</div>
+						</div>
+					{/each}
+				</div>
+			</div>
+
+			<div class="flex gap-2">
+				<Button onclick={() => (showCounterOffersModal = false)} variant="outline">Close</Button>
+			</div>
+		</div>
+	</div>
 {/if}

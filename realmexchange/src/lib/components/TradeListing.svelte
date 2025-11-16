@@ -12,7 +12,8 @@
 		showAllItems = false,
 		getAllListingItems,
 		onAccept,
-		onMakeOffer
+		onMakeOffer,
+		onViewCounterOffers
 	}: {
 		listing: any;
 		currentUserId?: string;
@@ -21,10 +22,14 @@
 		getAllListingItems?: (listing: any) => any[];
 		onAccept?: (listing: any) => void;
 		onMakeOffer?: (listing: any) => void;
+		onViewCounterOffers?: (listing: any) => void;
 	} = $props();
+
+	// Check if this listing has counter offers
+	let hasCounterOffers = $derived(listing.counterOffers && listing.counterOffers.length > 0);
 </script>
 
-<div class="rounded-lg border-2 border-gray-300 p-6">
+<div class="rounded-lg border-2 {hasCounterOffers ? 'border-green-500 bg-green-50' : 'border-gray-300'} p-6">
 	<div class="mb-4">
 		{#if listing.sellerUsername}
 			<h2 class="text-xl font-bold">Listed by: {listing.sellerUsername}</h2>
@@ -33,7 +38,6 @@
 			Created: {new Date(listing.createdAt).toLocaleDateString()}
 		</p>
 	</div>
-
 	{#if showAccountsAsComponents}
 		<div class="mb-4">
 			<span class="font-semibold">Accounts:</span>
@@ -82,24 +86,31 @@
 			{/if}
 		</div>
 	{:else if currentUserId && currentUserId === listing.sellerId}
-		<form
-			method="POST"
-			action="?/cancelListing"
-			use:enhance={() => {
-				return async ({ result }) => {
-					if (result.type === 'success') {
-						if (result.data?.error) {
-							alertStore.show(result.data.error as string, 'error');
-						} else {
-							alertStore.show('Listing cancelled successfully!');
-							await invalidateAll();
+		<div class="flex gap-2">
+			{#if hasCounterOffers && onViewCounterOffers}
+				<Button onclick={() => onViewCounterOffers(listing)} class="cursor-pointer bg-green-600 hover:bg-green-700 text-white">
+					View Counter Offers ({listing.counterOffers.length})
+				</Button>
+			{/if}
+			<form
+				method="POST"
+				action="?/cancelListing"
+				use:enhance={() => {
+					return async ({ result }) => {
+						if (result.type === 'success') {
+							if (result.data?.error) {
+								alertStore.show(result.data.error as string, 'error');
+							} else {
+								alertStore.show('Listing cancelled successfully!');
+								await invalidateAll();
+							}
 						}
-					}
-				};
-			}}
-		>
-			<input type="hidden" name="listingId" value={listing.id} />
-			<Button type="submit" variant="outline" class="cursor-pointer">Cancel Listing</Button>
-		</form>
+					};
+				}}
+			>
+				<input type="hidden" name="listingId" value={listing.id} />
+				<Button type="submit" variant="outline" class="cursor-pointer">Cancel Listing</Button>
+			</form>
+		</div>
 	{/if}
 </div>

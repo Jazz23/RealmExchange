@@ -11,7 +11,8 @@
 		seasonal,
 		mode = 'full',
 		selected = false,
-		onClick
+		onClick,
+		isLocked = false
 	}: {
 		name: string;
 		inventory: string[];
@@ -19,6 +20,7 @@
 		mode?: 'full' | 'compact' | 'selectable';
 		selected?: boolean;
 		onClick?: () => void;
+		isLocked?: boolean;
 	} = $props();
 	let command = $state('');
 	let isRefreshing = $state(false);
@@ -71,6 +73,8 @@
 		type="button"
 		class="w-full cursor-pointer rounded-lg border-2 bg-white p-4 text-left transition-colors {selected
 			? 'border-blue-500 bg-blue-50'
+			: isLocked
+			? 'border-pink-500 bg-pink-50'
 			: 'border-gray-300'}"
 		onclick={onClick}
 	>
@@ -78,6 +82,9 @@
 			<h3 class="mb-2 text-xl font-bold">{name}</h3>
 			<p class="text-sm text-gray-600">{seasonal ? 'Seasonal' : 'Not Seasonal'}</p>
 			<p class="text-sm text-gray-600">Items: {inventory.length}</p>
+			{#if isLocked}
+				<p class="text-sm text-pink-600 font-semibold">🔒 In Active Trade</p>
+			{/if}
 			{#if inventory.length > 0}
 				<p class="mt-2 text-xs text-gray-500">
 					{formattedItems.join(', ')}
@@ -86,11 +93,14 @@
 		</div>
 	</button>
 {:else}
-	<div class="rounded-lg border-2 border-gray-300 bg-white p-4">
+	<div class="rounded-lg border-2 {isLocked ? 'border-pink-500 bg-pink-50' : 'border-gray-300'} bg-white p-4">
 		<div class="mb-4">
 			<h3 class="mb-2 text-xl font-bold">{name}</h3>
 			<p class="text-sm text-gray-600">{seasonal ? 'Seasonal' : 'Not Seasonal'}</p>
 			<p class="text-sm text-gray-600">Items: {inventory.length}</p>
+			{#if isLocked}
+				<p class="text-sm text-pink-600 font-semibold">🔒 In Active Trade</p>
+			{/if}
 			{#if inventory.length > 0}
 				<p class="mt-2 text-xs text-gray-500">
 					{formattedItems.join(', ')}
@@ -138,7 +148,7 @@
 					}}
 				>
 					<input type="hidden" name="name" value={name} />
-					<Button type="submit" class="cursor-pointer" size="sm">
+					<Button type="submit" class="cursor-pointer" size="sm" disabled={isLocked}>
 						Login <MoveUpRight class="ml-1 h-4 w-4" />
 					</Button>
 				</form>
@@ -175,7 +185,7 @@
 					}}
 				>
 					<input type="hidden" name="name" value={name} />
-					<Button type="submit" class="cursor-pointer" disabled={isRefreshing} size="sm">
+					<Button type="submit" class="cursor-pointer" disabled={isRefreshing || isLocked} size="sm">
 						Refresh <RefreshCw class={`ml-1 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
 					</Button>
 				</form>
