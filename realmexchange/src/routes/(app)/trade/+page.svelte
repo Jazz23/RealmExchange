@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import Account from '../inventory/components/Account.svelte';
 	import { alertStore } from '$lib/stores'
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import SearchBar from '$lib/components/SearchBar.svelte';
+	import TradeListing from '$lib/components/TradeListing.svelte';
+	import { getAllListingItems } from '$lib/utils';
 
 	let { data } = $props();
 	let selectedAccounts = $state<string[]>([]);
@@ -159,6 +161,23 @@
 			{isSubmitting ? 'Creating...' : 'Create Listing'}
 		</Button>
 	</form>
+
+	{#if data.userListings && data.userListings.length > 0}
+		<div class="mt-12">
+			<h2 class="mb-4 text-2xl font-bold">My Listings</h2>
+			<div class="space-y-4">
+				{#each data.userListings as listing (listing.id)}
+					<TradeListing
+						{listing}
+						currentUserId={data.user?.id}
+						showAccountsAsComponents={false}
+						showAllItems={true}
+						getAllListingItems={getAllListingItems}
+					/>
+				{/each}
+			</div>
+		</div>
+	{/if}
 </div>
 
 {#if $alertStore.message}

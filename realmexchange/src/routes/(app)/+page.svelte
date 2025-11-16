@@ -7,6 +7,8 @@
 	import { alertStore } from '$lib/stores';
 	import { accounts } from '$lib/stores';
 	import SearchBar from '$lib/components/SearchBar.svelte';
+	import TradeListing from '$lib/components/TradeListing.svelte';
+	import { getAllListingItems } from '$lib/utils';
 
 	let { data } = $props();
 	let selectedListing = $state<any>(null);
@@ -74,39 +76,6 @@
 			missingItems
 		};
 	});
-
-	// Aggregate all items from all accounts in a listing
-	function getAllListingItems(listing: any) {
-		const itemData: Record<string, { count: number; isSeasonal: boolean }> = {};
-		
-		if (listing.accounts && Array.isArray(listing.accounts)) {
-			for (const account of listing.accounts) {
-				if (account.inventory && Array.isArray(account.inventory)) {
-					const accountSeasonal = account.seasonal;
-					for (const item of account.inventory) {
-						if (item && typeof item === 'string') {
-							if (!itemData[item]) {
-								itemData[item] = { count: 0, isSeasonal: accountSeasonal };
-							}
-							itemData[item].count += 1;
-							// If any account containing this item is seasonal, mark it as seasonal
-							if (accountSeasonal) {
-								itemData[item].isSeasonal = true;
-							}
-						}
-					}
-				}
-			}
-		}
-		
-		return Object.entries(itemData)
-			.map(([itemName, data]) => ({
-				name: itemName,
-				display: data.count > 1 ? `${itemName} (x${data.count})` : itemName,
-				isSeasonal: data.isSeasonal
-			}))
-			.sort((a, b) => a.name.localeCompare(b.name));
-	}
 
 	// Extract all unique items from listings for search suggestions
 	let allItems = $derived.by(() => {
@@ -196,65 +165,15 @@
 	{:else}
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 			{#each filteredListings as listing}
-				<div class="rounded-lg border-2 border-gray-300 p-6">
-					<div class="mb-4">
-						<h2 class="text-xl font-bold">Listed by: {listing.sellerUsername}</h2>
-						<p class="text-sm text-gray-600">
-							Created: {new Date(listing.createdAt).toLocaleDateString()}
-						</p>
-					</div>
-
-					<div class="mb-4">
-						<h3 class="mb-2 font-bold">All Items in Listing:</h3>
-						<div class="flex flex-wrap gap-2">
-							{#each getAllListingItems(listing) as item}
-								<span class="rounded bg-green-100 px-2 py-1 text-sm">
-									{item.display} ({item.isSeasonal ? 'Seasonal' : 'Not Seasonal'})
-								</span>
-							{/each}
-						</div>
-					</div>
-
-					<div class="mb-4">
-						<h3 class="mb-2 font-bold">Asking Price:</h3>
-						<div class="flex flex-wrap gap-2">
-							{#each listing.askingPriceItems as item}
-								<span class="rounded bg-blue-100 px-2 py-1 text-sm">
-									{item.name}{item.quantity > 1 ? ` (x${item.quantity})` : ''} ({item.seasonal ? 'Seasonal' : 'Not Seasonal'})
-								</span>
-							{/each}
-						</div>
-					</div>
-
-					{#if data.user && data.user.id !== listing.sellerId}
-						<div class="flex gap-2">
-							<Button onclick={() => openAcceptModal(listing)} class="cursor-pointer">Accept</Button>
-							<Button onclick={() => openOfferModal(listing)} class="cursor-pointer"
-								>Make Counter Offer</Button
-							>
-						</div>
-					{:else if data.user && data.user.id === listing.sellerId}
-						<form
-							method="POST"
-							action="?/cancelListing"
-							use:enhance={() => {
-								return async ({ result }) => {
-									if (result.type === 'success') {
-										if (result.data?.error) {
-											alertStore.show(result.data.error as string, 'error');
-										} else {
-											alertStore.show('Listing cancelled successfully!');
-											await invalidateAll();
-										}
-									}
-								};
-							}}
-						>
-							<input type="hidden" name="listingId" value={listing.id} />
-							<Button type="submit" variant="outline" class="cursor-pointer">Cancel Listing</Button>
-						</form>
-					{/if}
-				</div>
+				<TradeListing
+					{listing}
+					currentUserId={data.user?.id}
+					showAccountsAsComponents={false}
+					showAllItems={true}
+					getAllListingItems={getAllListingItems}
+					onAccept={openAcceptModal}
+					onMakeOffer={openOfferModal}
+				/>
 			{/each}
 		</div>
 	{/if}
