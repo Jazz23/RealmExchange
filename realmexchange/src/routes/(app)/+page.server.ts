@@ -61,9 +61,29 @@ export async function load({ locals }) {
 		})
 	);
 
+	// Load user's accounts for the modal
+	let accounts: any[] = [];
+	if (locals.user) {
+		const userAccounts = await db
+			.select({
+				name: table.account.name,
+				inventoryRaw: table.account.inventoryRaw,
+				seasonal: table.account.seasonal
+			})
+			.from(table.account)
+			.where(eq(table.account.ownerId, locals.user.id));
+
+		accounts = userAccounts.map(acc => ({
+			name: acc.name,
+			inventory: acc.inventoryRaw.split(',').filter(i => i),
+			seasonal: acc.seasonal === 1
+		}));
+	}
+
 	return {
 		user: locals.user,
-		listings: listingsWithAccounts
+		listings: listingsWithAccounts,
+		userAccounts: accounts
 	};
 }
 
@@ -101,7 +121,7 @@ export const actions = {
 		let buyerAccountNames: string[] = [];
 
 		if (offerAccountNames && typeof offerAccountNames === 'string') {
-			// This is a counter offer acceptance
+			// This is a counter offer acceptance - validate selected accounts have sufficient items
 			buyerAccountNames = JSON.parse(offerAccountNames);
 
 			// Verify the buyer owns all the offered accounts
@@ -115,6 +135,37 @@ export const actions = {
 
 				if (!account || account.ownerId !== locals.user.id) {
 					return { error: 'You do not own one or more of the offered accounts' };
+				}
+			}
+
+			// Validate that the selected accounts contain sufficient items for the asking price
+			const askingPriceItems = JSON.parse(listing.askingPrice);
+			
+			// Count total items across selected buyer accounts
+			const buyerItemCounts: Record<string, number> = {};
+			for (const name of buyerAccountNames) {
+				const account = await db
+					.select({ inventoryRaw: table.account.inventoryRaw })
+					.from(table.account)
+					.where(eq(table.account.name, name))
+					.limit(1)
+					.get();
+
+				if (account) {
+					const items = account.inventoryRaw.split(',').filter(i => i);
+					for (const item of items) {
+						buyerItemCounts[item] = (buyerItemCounts[item] || 0) + 1;
+					}
+				}
+			}
+
+			// Check if selected accounts have sufficient items for each required item
+			for (const requiredItem of askingPriceItems) {
+				const availableCount = buyerItemCounts[requiredItem.name] || 0;
+				if (availableCount < requiredItem.quantity) {
+					return { 
+						error: `Selected accounts have insufficient ${requiredItem.name}. You have ${availableCount} but need ${requiredItem.quantity}.` 
+					};
 				}
 			}
 		} else {

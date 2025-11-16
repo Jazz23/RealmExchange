@@ -9,16 +9,79 @@
 	import SearchBar from '$lib/components/SearchBar.svelte';
 
 	let { data } = $props();
-	console.log('Marketplace data:', data);
 	let selectedListing = $state<any>(null);
-	let selectedOfferAccounts = $state<string[]>([]);
-	let showOfferModal = $state(false);
+	let selectedAccounts = $state<string[]>([]);
+	let showModal = $state(false);
+	let isCounterOffer = $state(false);
 	let itemSearch = $state('');
+
+	function openAcceptModal(listing: any) {
+		selectedListing = listing;
+		showModal = true;
+		selectedAccounts = [];
+		isCounterOffer = false;
+	}
 
 	function openOfferModal(listing: any) {
 		selectedListing = listing;
-		showOfferModal = true;
-		selectedOfferAccounts = [];
+		showModal = true;
+		selectedAccounts = [];
+		isCounterOffer = true;
+	}
+
+	// Check if selected accounts can fulfill the asking price
+	let canFulfillTrade = $derived.by(() => {
+		if (isCounterOffer || !selectedListing || selectedAccounts.length === 0) {
+			return { canFulfill: true, missingItems: [] };
+		}
+
+		const askingPriceItems = selectedListing.askingPriceItems || [];
+		const selectedAccountData = data.userAccounts.filter(account => 
+			selectedAccounts.includes(account.name)
+		);
+
+		// Count items in selected accounts
+		const itemCounts: Record<string, number> = {};
+		for (const account of selectedAccountData) {
+			for (const item of account.inventory) {
+				itemCounts[item] = (itemCounts[item] || 0) + 1;
+			}
+		}
+
+		// Check each required item
+		const missingItems: string[] = [];
+		for (const requiredItem of askingPriceItems) {
+			const availableCount = itemCounts[requiredItem.name] || 0;
+			if (availableCount < requiredItem.quantity) {
+				missingItems.push(`${requiredItem.name} (${availableCount}/${requiredItem.quantity})`);
+			}
+		}
+
+		return {
+			canFulfill: missingItems.length === 0,
+			missingItems
+		};
+	});
+
+	// Aggregate all items from all accounts in a listing
+	function getAllListingItems(listing: any) {
+		const itemCounts: Record<string, number> = {};
+		
+		if (listing.accounts && Array.isArray(listing.accounts)) {
+			for (const account of listing.accounts) {
+				if (account.inventory && Array.isArray(account.inventory)) {
+					for (const item of account.inventory) {
+						if (item && typeof item === 'string') {
+							itemCounts[item] = (itemCounts[item] || 0) + 1;
+						}
+					}
+				}
+			}
+		}
+		
+		return Object.entries(itemCounts)
+			.map(([itemName, count]) => count > 1 ? `${itemName} (x${count})` : itemName)
+			.sort();
 	}
 
 	// Extract all unique items from listings for search suggestions
@@ -118,6 +181,17 @@
 					</div>
 
 					<div class="mb-4">
+						<h3 class="mb-2 font-bold">All Items in Listing:</h3>
+						<div class="flex flex-wrap gap-2">
+							{#each getAllListingItems(listing) as item}
+								<span class="rounded bg-green-100 px-2 py-1 text-sm">
+									{item}
+								</span>
+							{/each}
+						</div>
+					</div>
+
+					<div class="mb-4">
 						<h3 class="mb-2 font-bold">Accounts for Sale:</h3>
 						{#each listing.accounts as account}
 							<div class="mb-2">
@@ -144,35 +218,7 @@
 
 					{#if data.user && data.user.id !== listing.sellerId}
 						<div class="flex gap-2">
-							<form
-								method="POST"
-								action="?/acceptTrade"
-								use:enhance={() => {
-									return async ({ result }) => {
-										if (result.type === 'success') {
-											if (result.data?.error) {
-												alertStore.show(result.data.error as string, 'error');
-											} else {
-												alertStore.show('Trade accepted successfully!');
-												await invalidateAll();
-
-												// Add the accounts to the account store
-												const newAccounts = listing.accounts.map((account: any) => ({
-													name: account.name,
-													inventory: account.inventory,
-													seasonal: account.seasonal
-												}));
-
-												accounts.update((current) => [...current, ...newAccounts]);
-											}
-										}
-									};
-								}}
-							>
-								<input type="hidden" name="listingId" value={listing.id} />
-								<Button type="submit" class="cursor-pointer">Accept</Button>
-							</form>
-
+							<Button onclick={() => openAcceptModal(listing)} class="cursor-pointer">Accept</Button>
 							<Button onclick={() => openOfferModal(listing)} class="cursor-pointer"
 								>Make Counter Offer</Button
 							>
@@ -214,11 +260,11 @@
 	</Alert>
 {/if}
 
-<!-- Counter Offer Modal -->
-{#if showOfferModal && selectedListing}
+<!-- Unified Modal for Accept and Counter Offer -->
+{#if showModal && selectedListing}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
 		<div class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6">
-			<h2 class="mb-4 text-2xl font-bold">Make Counter Offer</h2>
+			<h2 class="mb-4 text-2xl font-bold">{isCounterOffer ? 'Make Counter Offer' : 'Accept Trade'}</h2>
 
 			<div class="mb-4">
 				<h3 class="mb-2 font-bold">Listing Details:</h3>
@@ -228,27 +274,81 @@
 				</p>
 			</div>
 
+			{#if !isCounterOffer}
+				<div class="mb-4">
+					<h3 class="mb-2 font-bold">Asking Price:</h3>
+					<div class="flex flex-wrap gap-2">
+						{#each selectedListing.askingPriceItems as item}
+							<span class="rounded bg-blue-100 px-2 py-1 text-sm">
+								{item.name}{item.quantity > 1 ? ` (x${item.quantity})` : ''}
+							</span>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
 			<div class="mb-4">
-				<h3 class="mb-2 font-bold">Select Your Accounts to Offer:</h3>
-				<p class="mb-2 text-sm text-gray-600">Note: You need to load your accounts first</p>
-				<a href="/inventory" class="text-blue-500 hover:underline">Go to Inventory</a>
+				<h3 class="mb-2 font-bold">Select Your Accounts {isCounterOffer ? 'to Offer' : 'to Pay With'}:</h3>
+				<p class="mb-2 text-sm text-gray-600">
+					{isCounterOffer ? 'Select the accounts you want to offer in exchange for the listing.' : 'Choose accounts that contain the required items.'}
+				</p>
+				{#if !isCounterOffer && selectedAccounts.length > 0 && !canFulfillTrade.canFulfill}
+					<div class="mb-2 p-2 bg-red-100 border border-red-300 rounded text-sm text-red-700">
+						<strong>Insufficient items in selected accounts:</strong>
+						<ul class="mt-1 list-disc list-inside">
+							{#each canFulfillTrade.missingItems as item}
+								<li>{item}</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+					{#each data.userAccounts as account}
+						<Account
+							name={account.name}
+							inventory={account.inventory}
+							seasonal={account.seasonal}
+							mode="selectable"
+							selected={selectedAccounts.includes(account.name)}
+							onClick={() => {
+								if (selectedAccounts.includes(account.name)) {
+									selectedAccounts = selectedAccounts.filter(name => name !== account.name);
+								} else {
+									selectedAccounts = [...selectedAccounts, account.name];
+								}
+							}}
+						/>
+					{/each}
+				</div>
 			</div>
 
 			<div class="flex gap-2">
-				<Button onclick={() => (showOfferModal = false)} variant="outline">Cancel</Button>
+				<Button onclick={() => (showModal = false)} variant="outline">Cancel</Button>
 				<form
 					method="POST"
-					action="?/makeOffer"
+					action={isCounterOffer ? "?/makeOffer" : "?/acceptTrade"}
 					use:enhance={() => {
-						showOfferModal = false;
+						showModal = false;
 						return async ({ result }) => {
 							if (result.type === 'success') {
 								if (result.data?.error) {
 									alertStore.show(result.data.error as string, 'error');
 								} else {
 									alertStore.show(
-										'Offer submitted! (Note: This is a simplified version. In a full implementation, the seller would review your offer.)'
+										isCounterOffer
+											? 'Offer submitted! (Note: This is a simplified version. In a full implementation, the seller would review your offer.)'
+											: 'Trade accepted successfully!'
 									);
+									if (!isCounterOffer) {
+										await invalidateAll();
+										// Add the accounts to the account store
+										const newAccounts = selectedListing.accounts.map((account: any) => ({
+											name: account.name,
+											inventory: account.inventory,
+											seasonal: account.seasonal
+										}));
+										accounts.update((current) => [...current, ...newAccounts]);
+									}
 								}
 							}
 						};
@@ -257,10 +357,12 @@
 					<input type="hidden" name="listingId" value={selectedListing.id} />
 					<input
 						type="hidden"
-						name="offerAccountGuids"
-						value={JSON.stringify(selectedOfferAccounts)}
+						name="offerAccountNames"
+						value={JSON.stringify(selectedAccounts)}
 					/>
-					<Button type="submit" disabled={selectedOfferAccounts.length === 0}>Submit Offer</Button>
+					<Button type="submit" disabled={selectedAccounts.length === 0 || (!isCounterOffer && !canFulfillTrade.canFulfill)}>
+						{isCounterOffer ? 'Submit Offer' : 'Accept Trade'}
+					</Button>
 				</form>
 			</div>
 		</div>
