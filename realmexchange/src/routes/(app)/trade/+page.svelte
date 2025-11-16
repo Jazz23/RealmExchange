@@ -9,7 +9,7 @@
 
 	let { data } = $props();
 	let selectedAccounts = $state<string[]>([]);
-	let askingPrice = $state<{name: string, quantity: number}[]>([]);
+	let askingPrice = $state<{name: string, quantity: number, seasonal: boolean}[]>([]);
 	let itemSearch = $state('');
 	let isSubmitting = $state(false);
 
@@ -45,7 +45,7 @@
 
 	function addItem(item: string) {
 		if (!askingPrice.some(ap => ap.name === item)) {
-			askingPrice = [...askingPrice, { name: item, quantity: 1 }];
+			askingPrice = [...askingPrice, { name: item, quantity: 1, seasonal: false }];
 		}
 		itemSearch = '';
 	}
@@ -108,6 +108,15 @@
 							value={item.quantity}
 							oninput={(e) => updateQuantity(item.name, parseInt(e.currentTarget.value) || 1)}
 							class="w-12 h-6 text-xs text-center border border-gray-300 rounded"
+						/>
+					</div>
+					<div class="flex items-center gap-1">
+						<label for="seasonal-{item.name}" class="text-xs text-gray-600">Seasonal:</label>
+						<input
+							id="seasonal-{item.name}"
+							type="checkbox"
+							bind:checked={item.seasonal}
+							class="w-4 h-4"
 						/>
 					</div>
 					<button class="text-red-500 hover:text-red-700 ml-1" onclick={() => removeItem(item.name)}>

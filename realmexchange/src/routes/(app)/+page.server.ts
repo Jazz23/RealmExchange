@@ -141,11 +141,11 @@ export const actions = {
 			// Validate that the selected accounts contain sufficient items for the asking price
 			const askingPriceItems = JSON.parse(listing.askingPrice);
 			
-			// Count total items across selected buyer accounts
-			const buyerItemCounts: Record<string, number> = {};
+			// Count total items across selected buyer accounts, grouped by seasonal status
+			const buyerItemCounts: Record<string, { seasonal: number; nonSeasonal: number }> = {};
 			for (const name of buyerAccountNames) {
 				const account = await db
-					.select({ inventoryRaw: table.account.inventoryRaw })
+					.select({ inventoryRaw: table.account.inventoryRaw, seasonal: table.account.seasonal })
 					.from(table.account)
 					.where(eq(table.account.name, name))
 					.limit(1)
@@ -153,18 +153,32 @@ export const actions = {
 
 				if (account) {
 					const items = account.inventoryRaw.split(',').filter(i => i);
+					const isSeasonal = account.seasonal === 1;
 					for (const item of items) {
-						buyerItemCounts[item] = (buyerItemCounts[item] || 0) + 1;
+						if (!buyerItemCounts[item]) {
+							buyerItemCounts[item] = { seasonal: 0, nonSeasonal: 0 };
+						}
+						if (isSeasonal) {
+							buyerItemCounts[item].seasonal += 1;
+						} else {
+							buyerItemCounts[item].nonSeasonal += 1;
+						}
 					}
 				}
 			}
 
 			// Check if selected accounts have sufficient items for each required item
 			for (const requiredItem of askingPriceItems) {
-				const availableCount = buyerItemCounts[requiredItem.name] || 0;
-				if (availableCount < requiredItem.quantity) {
+				const availableCount = buyerItemCounts[requiredItem.name];
+				if (!availableCount) {
 					return { 
-						error: `Selected accounts have insufficient ${requiredItem.name}. You have ${availableCount} but need ${requiredItem.quantity}.` 
+						error: `Selected accounts have insufficient ${requiredItem.name} (${requiredItem.seasonal ? 'Seasonal' : 'Not Seasonal'}). You have 0 but need ${requiredItem.quantity}.` 
+					};
+				}
+				const countFromCorrectAccounts = requiredItem.seasonal ? availableCount.seasonal : availableCount.nonSeasonal;
+				if (countFromCorrectAccounts < requiredItem.quantity) {
+					return { 
+						error: `Selected accounts have insufficient ${requiredItem.name} (${requiredItem.seasonal ? 'Seasonal' : 'Not Seasonal'}). You have ${countFromCorrectAccounts} but need ${requiredItem.quantity}.` 
 					};
 				}
 			}

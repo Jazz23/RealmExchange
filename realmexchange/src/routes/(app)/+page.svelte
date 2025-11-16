@@ -40,20 +40,32 @@
 			selectedAccounts.includes(account.name)
 		);
 
-		// Count items in selected accounts
-		const itemCounts: Record<string, number> = {};
+		// Count items in selected accounts, grouped by seasonal status
+		const itemCounts: Record<string, { seasonal: number; nonSeasonal: number }> = {};
 		for (const account of selectedAccountData) {
 			for (const item of account.inventory) {
-				itemCounts[item] = (itemCounts[item] || 0) + 1;
+				if (!itemCounts[item]) {
+					itemCounts[item] = { seasonal: 0, nonSeasonal: 0 };
+				}
+				if (account.seasonal) {
+					itemCounts[item].seasonal += 1;
+				} else {
+					itemCounts[item].nonSeasonal += 1;
+				}
 			}
 		}
 
 		// Check each required item
 		const missingItems: string[] = [];
 		for (const requiredItem of askingPriceItems) {
-			const availableCount = itemCounts[requiredItem.name] || 0;
-			if (availableCount < requiredItem.quantity) {
-				missingItems.push(`${requiredItem.name} (${availableCount}/${requiredItem.quantity})`);
+			const availableCount = itemCounts[requiredItem.name];
+			if (!availableCount) {
+				missingItems.push(`${requiredItem.name} (${requiredItem.seasonal ? 'Seasonal' : 'Not Seasonal'}) (0/${requiredItem.quantity})`);
+			} else {
+				const countFromCorrectAccounts = requiredItem.seasonal ? availableCount.seasonal : availableCount.nonSeasonal;
+				if (countFromCorrectAccounts < requiredItem.quantity) {
+					missingItems.push(`${requiredItem.name} (${requiredItem.seasonal ? 'Seasonal' : 'Not Seasonal'}) (${countFromCorrectAccounts}/${requiredItem.quantity})`);
+				}
 			}
 		}
 
@@ -204,25 +216,11 @@
 					</div>
 
 					<div class="mb-4">
-						<h3 class="mb-2 font-bold">Accounts for Sale:</h3>
-						{#each listing.accounts as account}
-							<div class="mb-2">
-								<Account
-									name={account.name}
-									inventory={account.inventory}
-									seasonal={account.seasonal}
-									mode="compact"
-								/>
-							</div>
-						{/each}
-					</div>
-
-					<div class="mb-4">
 						<h3 class="mb-2 font-bold">Asking Price:</h3>
 						<div class="flex flex-wrap gap-2">
 							{#each listing.askingPriceItems as item}
 								<span class="rounded bg-blue-100 px-2 py-1 text-sm">
-									{item.name}{item.quantity > 1 ? ` (x${item.quantity})` : ''}
+									{item.name}{item.quantity > 1 ? ` (x${item.quantity})` : ''} ({item.seasonal ? 'Seasonal' : 'Not Seasonal'})
 								</span>
 							{/each}
 						</div>
@@ -292,7 +290,7 @@
 					<div class="flex flex-wrap gap-2">
 						{#each selectedListing.askingPriceItems as item}
 							<span class="rounded bg-blue-100 px-2 py-1 text-sm">
-								{item.name}{item.quantity > 1 ? ` (x${item.quantity})` : ''}
+								{item.name}{item.quantity > 1 ? ` (x${item.quantity})` : ''} ({item.seasonal ? 'Seasonal' : 'Not Seasonal'})
 							</span>
 						{/each}
 					</div>
