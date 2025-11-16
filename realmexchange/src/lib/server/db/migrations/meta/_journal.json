@@ -64,6 +64,13 @@
       "when": 1763050667491,
       "tag": "0008_motionless_shriek",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1763271896846,
+      "tag": "0009_handy_grey_gargoyle",
+      "breakpoints": true
     }
   ]
 }

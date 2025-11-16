@@ -11,22 +11,22 @@ export const load = async ({ locals }) => {
 
 	// Run both database queries in parallel
 	const activeListings = await db
-			.select({ accountGuids: table.tradeListing.accountGuids })
+			.select({ accountNames: table.tradeListing.accountNames })
 			.from(table.tradeListing)
 			.where(eq(table.tradeListing.status, 'active'))
 
 	// Collect all account account names that are currently in active listings
 	const listedAccountNames = new Set<string>();
-	const allGuids: string[] = [];
+	const allNames: string[] = [];
 	for (const listing of activeListings) {
-		const guids = JSON.parse(listing.accountGuids) as string[];
-		allGuids.push(...guids);
+		const names = JSON.parse(listing.accountNames) as string[];
+		allNames.push(...names);
 	}
-	const uniqueGuids = [...new Set(allGuids)];
+	const uniqueNames = [...new Set(allNames)];
 	const accounts = await db
 		.select({ name: table.account.name })
 		.from(table.account)
-		.where(inArray(table.account.guid, uniqueGuids));
+		.where(inArray(table.account.name, uniqueNames));
 	for (const account of accounts) {
 		listedAccountNames.add(account.name);
 	}
@@ -59,7 +59,6 @@ export const actions = {
 
 		// Verify the user owns all the accounts
 		const names = JSON.parse(accountNames) as string[];
-		const guids: string[] = [];
 		for (const name of names) {
 			const account = await db
 				.select()
@@ -71,7 +70,6 @@ export const actions = {
 			if (!account || account.ownerId !== locals.user.id) {
 				return { error: 'You do not own one or more of these accounts' };
 			}
-			guids.push(account.guid);
 		}
 
 		// Create the listing
@@ -79,7 +77,7 @@ export const actions = {
 		await db.insert(table.tradeListing).values({
 			id: listingId,
 			sellerId: locals.user.id,
-			accountGuids: JSON.stringify(guids),
+			accountNames: accountNames,
 			askingPrice: askingPrice,
 			status: 'active',
 			createdAt: new Date()

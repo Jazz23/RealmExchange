@@ -2,7 +2,7 @@
 
 import { db } from '$lib/server/db/index.js';
 import * as table from '$lib/server/db/schema.js';
-import { createAccount, getAccessToken, loadAccountInventory } from '$lib/server/realmapi.js';
+import { createAccount, getAccessToken, loadAccountInventory } from '$lib/server/realmapi';
 import { and, eq } from 'drizzle-orm';
 import { mockCreateAccount, mockRefreshAccount } from '../../../../test/mock.js';
 import { redirect } from '@sveltejs/kit';
@@ -17,7 +17,23 @@ export const load = async ({ locals }) => {
         eq(table.user.id, locals.user.id)
     ).limit(1).get();
 
-    return { needsHWID: hwid!.hwid === "" };
+    // Load user's accounts
+    const userAccounts = await db
+        .select({
+            name: table.account.name,
+            inventoryRaw: table.account.inventoryRaw,
+            seasonal: table.account.seasonal
+        })
+        .from(table.account)
+        .where(eq(table.account.ownerId, locals.user.id));
+
+    const accounts = userAccounts.map(acc => ({
+        name: acc.name,
+        inventory: acc.inventoryRaw.split(',').filter(i => i),
+        seasonal: acc.seasonal === 1
+    }));
+
+    return { needsHWID: hwid!.hwid === "", accounts };
 }
 
 export const actions = {
@@ -44,7 +60,7 @@ export const actions = {
 
             await db.delete(table.account).where(and(
                 eq(table.account.ownerId, locals.user.id),
-                eq(table.account.guid, account.guid)
+                eq(table.account.name, account.name)
             ));
         }
 
@@ -88,7 +104,7 @@ export const actions = {
         // Update the account as verified
         await db.update(table.account).set({
             verified: 1
-        }).where(eq(table.account.guid, account.guid));
+        }).where(eq(table.account.name, account.name));
 
         return { name: account.name };
     },
@@ -105,7 +121,7 @@ export const actions = {
         }
 
         // Find the account by name from the DB
-        const account = await db.select({ guid: table.account.guid, password: table.account.password }).from(table.account).where(
+        const account = await db.select({ name: table.account.name, guid: table.account.guid, password: table.account.password }).from(table.account).where(
             eq(table.account.name, name)
         ).limit(1).get();
 
@@ -113,11 +129,10 @@ export const actions = {
             return { error: 'Account not found' };
         }
 
-        // Check if this account is in any active listings
         const activeListings = await db
-            .select({
+            .select({ 
                 id: table.tradeListing.id,
-                accountGuids: table.tradeListing.accountGuids,
+                accountNames: table.tradeListing.accountNames,
                 askingPrice: table.tradeListing.askingPrice
             })
             .from(table.tradeListing)
@@ -125,17 +140,15 @@ export const actions = {
 
         let conflictingListing = null;
         for (const listing of activeListings) {
-            const guids = JSON.parse(listing.accountGuids) as string[];
-            if (guids.includes(account.guid)) {
+            const names = JSON.parse(listing.accountNames) as string[];
+            if (names.includes(account.name)) {
                 conflictingListing = {
                     id: listing.id,
                     askingPrice: JSON.parse(listing.askingPrice)
                 };
                 break;
             }
-        }
-
-        if (conflictingListing) {
+        }        if (conflictingListing) {
             return {
                 requiresListingCancellation: true,
                 listingId: conflictingListing.id,
@@ -174,7 +187,7 @@ export const actions = {
         }
 
         // Find the account by name from the DB
-        const account = await db.select({ guid: table.account.guid, password: table.account.password }).from(table.account).where(
+        const account = await db.select({ name: table.account.name, guid: table.account.guid, password: table.account.password }).from(table.account).where(
             eq(table.account.name, name)
         ).limit(1).get();
 
@@ -192,7 +205,7 @@ export const actions = {
             await db.update(table.account).set({
                 inventoryRaw,
                 seasonal: seasonal ? 1 : 0
-            }).where(eq(table.account.guid, account.guid));
+            }).where(eq(table.account.name, account.name));
 
             return { inventory: inventoryRaw.split(","), seasonal };
         }
@@ -216,7 +229,7 @@ export const actions = {
         await db.update(table.account).set({
             inventoryRaw: inventory,
             seasonal: seasonal ? 1 : 0
-        }).where(eq(table.account.guid, account.guid));
+        }).where(eq(table.account.name, account.name));
 
         return { inventory: inventory.split(","), seasonal };
     },
@@ -253,7 +266,7 @@ export const actions = {
             .where(eq(table.tradeListing.id, listingId));
 
         // Now proceed with login
-        const account = await db.select({ guid: table.account.guid, password: table.account.password }).from(table.account).where(
+        const account = await db.select({ name: table.account.name, guid: table.account.guid, password: table.account.password }).from(table.account).where(
             eq(table.account.name, accountName)
         ).limit(1).get();
 

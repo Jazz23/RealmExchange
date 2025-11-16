@@ -5,6 +5,7 @@
 	import Account from '../inventory/components/Account.svelte';
 	import { alertStore } from '$lib/stores'
 	import { accounts } from '$lib/stores';
+	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 
 	let { data } = $props();
 	let selectedAccounts = $state<string[]>([]);
@@ -171,13 +172,18 @@
 			isSubmitting = true;
 			return async ({ result }) => {
 				isSubmitting = false;
-				if (result.type === 'success') {
-					if (result.data?.error) {
-						alertStore.show(result.data.error as string, 'error');
-					} else {
-						setTimeout(() => goto('/'), 500);
-					}
+				if (result.type !== 'success') {
+					alertStore.show('Failed to create listing', 'error');
+					return;
 				}
+
+				// Check for server-side error
+				if (result?.data?.error) {
+					alertStore.show(result.data.error as string, 'error');
+					return;
+				}
+
+				setTimeout(() => goto('/'), 500);
 			};
 		}}
 	>
@@ -192,3 +198,10 @@
 		</Button>
 	</form>
 </div>
+
+{#if $alertStore.message}
+	<Alert class="fixed top-4 left-4 z-50 max-w-md" variant={$alertStore.type === 'error' ? 'destructive' : 'default'}>
+		<AlertTitle>{$alertStore.type === 'error' ? 'Error' : 'Success'}</AlertTitle>
+		<AlertDescription>{$alertStore.message}</AlertDescription>
+	</Alert>
+{/if}

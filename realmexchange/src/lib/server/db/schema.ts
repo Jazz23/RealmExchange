@@ -20,9 +20,9 @@ export const account = sqliteTable('account', {
 		.notNull()
 		.references(() => user.id),
 	verified: integer('verified').notNull().default(0),
-	guid: text('guid').primaryKey(),
+	guid: text('guid').notNull(),
 	password: text('password').notNull(),
-	name: text('name').notNull(),
+	name: text('name').primaryKey(),
 	inventoryRaw: text('inventory_raw').notNull().default(''),
 	seasonal: integer('seasonal').notNull()
 });
@@ -32,7 +32,7 @@ export const tradeListing = sqliteTable('trade_listing', {
 	sellerId: text('seller_id')
 		.notNull()
 		.references(() => user.id),
-	accountGuids: text('account_guids').notNull(), // JSON array of account GUIDs being sold
+	accountNames: text('account_names').notNull(), // JSON array of account names being sold
 	askingPrice: text('asking_price').notNull(), // JSON array of item names
 	status: text('status').notNull().default('active'), // active, completed, cancelled
 	createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
@@ -46,7 +46,7 @@ export const tradeOffer = sqliteTable('trade_offer', {
 	buyerId: text('buyer_id')
 		.notNull()
 		.references(() => user.id),
-	offerAccountGuids: text('offer_account_guids').notNull(), // JSON array of account GUIDs being offered
+	offerAccountNames: text('offer_account_names').notNull(), // JSON array of account names being offered
 	status: text('status').notNull().default('pending'), // pending, accepted, rejected
 	createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
 });

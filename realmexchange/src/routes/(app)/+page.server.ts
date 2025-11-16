@@ -8,7 +8,7 @@ export async function load({ locals }) {
 		.select({
 			id: table.tradeListing.id,
 			sellerId: table.tradeListing.sellerId,
-			accountGuids: table.tradeListing.accountGuids,
+			accountNames: table.tradeListing.accountNames,
 			askingPrice: table.tradeListing.askingPrice,
 			createdAt: table.tradeListing.createdAt,
 			sellerUsername: table.user.username
@@ -20,34 +20,31 @@ export async function load({ locals }) {
 	// For each listing, get the account details
 	const listingsWithAccounts = await Promise.all(
 		listings.map(async (listing) => {
-			const guids = JSON.parse(listing.accountGuids);
+			const names = JSON.parse(listing.accountNames);
 			const accounts = await db
 				.select({
-					guid: table.account.guid,
 					name: table.account.name,
 					inventoryRaw: table.account.inventoryRaw,
 					seasonal: table.account.seasonal
 				})
 				.from(table.account)
-				.where(eq(table.account.guid, guids[0])); // Get details for all accounts
+				.where(eq(table.account.name, names[0])); // Get details for all accounts
 
 			const allAccounts = await Promise.all(
-				guids.map(async (guid: string) => {
+				names.map(async (name: string) => {
 					const acc = await db
 						.select({
-							guid: table.account.guid,
 							name: table.account.name,
 							inventoryRaw: table.account.inventoryRaw,
 							seasonal: table.account.seasonal
 						})
 						.from(table.account)
-						.where(eq(table.account.guid, guid))
+						.where(eq(table.account.name, name))
 						.limit(1)
 						.get();
 
 					return acc
 						? {
-								guid: acc.guid,
 								name: acc.name,
 								inventory: acc.inventoryRaw.split(',').filter((i: string) => i),
 								seasonal: acc.seasonal === 1
@@ -78,7 +75,7 @@ export const actions = {
 
 		const data = await request.formData();
 		const listingId = data.get('listingId');
-		const offerAccountGuids = data.get('offerAccountGuids');
+		const offerAccountNames = data.get('offerAccountNames');
 
 		if (typeof listingId !== 'string') {
 			return { error: 'Invalid listing ID' };
@@ -101,18 +98,18 @@ export const actions = {
 			return { error: 'Cannot accept your own listing' };
 		}
 
-		let buyerAccountGuids: string[] = [];
+		let buyerAccountNames: string[] = [];
 
-		if (offerAccountGuids && typeof offerAccountGuids === 'string') {
+		if (offerAccountNames && typeof offerAccountNames === 'string') {
 			// This is a counter offer acceptance
-			buyerAccountGuids = JSON.parse(offerAccountGuids);
+			buyerAccountNames = JSON.parse(offerAccountNames);
 
 			// Verify the buyer owns all the offered accounts
-			for (const guid of buyerAccountGuids) {
+			for (const name of buyerAccountNames) {
 				const account = await db
 					.select()
 					.from(table.account)
-					.where(eq(table.account.guid, guid))
+					.where(eq(table.account.name, name))
 					.limit(1)
 					.get();
 
@@ -127,7 +124,7 @@ export const actions = {
 			// Get all buyer's accounts
 			const buyerAccounts = await db
 				.select({
-					guid: table.account.guid,
+					name: table.account.name,
 					inventoryRaw: table.account.inventoryRaw
 				})
 				.from(table.account)
@@ -183,7 +180,7 @@ export const actions = {
 				}
 
 				if (hasNeededItems) {
-					accountsToTransfer.push(account.guid);
+					accountsToTransfer.push(account.name);
 					// Reduce the requirements by what this account provides
 					for (const [itemName, count] of Object.entries(itemCounts)) {
 						if (itemsToTransfer[itemName]) {
@@ -198,27 +195,27 @@ export const actions = {
 				return { error: 'Unable to fulfill payment requirements with available accounts.' };
 			}
 
-			buyerAccountGuids = accountsToTransfer;
+			buyerAccountNames = accountsToTransfer;
 		}
 
 		// Transfer accounts
-		const sellerAccountGuids = JSON.parse(listing.accountGuids);
+		const sellerAccountNames = JSON.parse(listing.accountNames);
 
 		// Transfer seller's accounts to buyer
-		for (const guid of sellerAccountGuids) {
+		for (const name of sellerAccountNames) {
 			await db
 				.update(table.account)
 				.set({ ownerId: locals.user.id })
-				.where(eq(table.account.guid, guid));
+				.where(eq(table.account.name, name));
 		}
 
 		// Transfer buyer's accounts to seller (if any)
-		if (buyerAccountGuids.length > 0) {
-			for (const guid of buyerAccountGuids) {
+		if (buyerAccountNames.length > 0) {
+			for (const name of buyerAccountNames) {
 				await db
 					.update(table.account)
 					.set({ ownerId: listing.sellerId })
-					.where(eq(table.account.guid, guid));
+					.where(eq(table.account.name, name));
 			}
 		}
 
@@ -238,9 +235,9 @@ export const actions = {
 
 		const data = await request.formData();
 		const listingId = data.get('listingId');
-		const offerAccountGuids = data.get('offerAccountGuids');
+		const offerAccountNames = data.get('offerAccountNames');
 
-		if (typeof listingId !== 'string' || typeof offerAccountGuids !== 'string') {
+		if (typeof listingId !== 'string' || typeof offerAccountNames !== 'string') {
 			return { error: 'Invalid data' };
 		}
 
@@ -262,12 +259,12 @@ export const actions = {
 		}
 
 		// Verify the user owns all the offered accounts
-		const guids = JSON.parse(offerAccountGuids);
-		for (const guid of guids) {
+		const names = JSON.parse(offerAccountNames);
+		for (const name of names) {
 			const account = await db
 				.select()
 				.from(table.account)
-				.where(eq(table.account.guid, guid))
+				.where(eq(table.account.name, name))
 				.limit(1)
 				.get();
 
@@ -282,7 +279,7 @@ export const actions = {
 			id: offerId,
 			listingId: listingId,
 			buyerId: locals.user.id,
-			offerAccountGuids: offerAccountGuids,
+			offerAccountNames: offerAccountNames,
 			status: 'pending',
 			createdAt: new Date()
 		});
