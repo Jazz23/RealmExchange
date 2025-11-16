@@ -65,23 +65,35 @@
 
 	// Aggregate all items from all accounts in a listing
 	function getAllListingItems(listing: any) {
-		const itemCounts: Record<string, number> = {};
+		const itemData: Record<string, { count: number; isSeasonal: boolean }> = {};
 		
 		if (listing.accounts && Array.isArray(listing.accounts)) {
 			for (const account of listing.accounts) {
 				if (account.inventory && Array.isArray(account.inventory)) {
+					const accountSeasonal = account.seasonal;
 					for (const item of account.inventory) {
 						if (item && typeof item === 'string') {
-							itemCounts[item] = (itemCounts[item] || 0) + 1;
+							if (!itemData[item]) {
+								itemData[item] = { count: 0, isSeasonal: accountSeasonal };
+							}
+							itemData[item].count += 1;
+							// If any account containing this item is seasonal, mark it as seasonal
+							if (accountSeasonal) {
+								itemData[item].isSeasonal = true;
+							}
 						}
 					}
 				}
 			}
 		}
 		
-		return Object.entries(itemCounts)
-			.map(([itemName, count]) => count > 1 ? `${itemName} (x${count})` : itemName)
-			.sort();
+		return Object.entries(itemData)
+			.map(([itemName, data]) => ({
+				name: itemName,
+				display: data.count > 1 ? `${itemName} (x${data.count})` : itemName,
+				isSeasonal: data.isSeasonal
+			}))
+			.sort((a, b) => a.name.localeCompare(b.name));
 	}
 
 	// Extract all unique items from listings for search suggestions
@@ -185,7 +197,7 @@
 						<div class="flex flex-wrap gap-2">
 							{#each getAllListingItems(listing) as item}
 								<span class="rounded bg-green-100 px-2 py-1 text-sm">
-									{item}
+									{item.display} ({item.isSeasonal ? 'Seasonal' : 'Not Seasonal'})
 								</span>
 							{/each}
 						</div>
