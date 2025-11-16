@@ -5,34 +5,17 @@
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { invalidateAll } from '$app/navigation';
 	import { alertStore } from '$lib/stores';
+	import { accounts } from '$lib/stores';
 
 	let { data } = $props();
 	let selectedListing = $state<any>(null);
 	let selectedOfferAccounts = $state<string[]>([]);
-	let userAccounts = $state<any[]>([]);
 	let showOfferModal = $state(false);
-
-	// Load user's accounts for making offers
-	async function loadUserAccounts() {
-		if (!data.user) return;
-		const response = await fetch('/inventory/accounts.json');
-		if (response.ok) {
-			userAccounts = await response.json();
-		}
-	}
 
 	function openOfferModal(listing: any) {
 		selectedListing = listing;
 		showOfferModal = true;
 		selectedOfferAccounts = [];
-	}
-
-	function toggleOfferAccount(guid: string) {
-		if (selectedOfferAccounts.includes(guid)) {
-			selectedOfferAccounts = selectedOfferAccounts.filter((g) => g !== guid);
-		} else {
-			selectedOfferAccounts = [...selectedOfferAccounts, guid];
-		}
 	}
 </script>
 
@@ -97,13 +80,26 @@
 											} else {
 												alertStore.show('Trade accepted successfully!');
 												await invalidateAll();
+
+												// Add the accounts to the account store
+												const newAccounts = listing.accounts.map((account: any) => ({
+													guid: account.guid,
+													name: account.name,
+													inventory: account.inventory,
+													seasonal: account.seasonal,
+												}));
+
+												accounts.update((current) => [
+													...current,
+													...newAccounts,
+												]);
 											}
 										}
 									};
 								}}
 							>
 								<input type="hidden" name="listingId" value={listing.id} />
-								<Button type="submit" class="cursor-pointer">Accept (No Counter)</Button>
+								<Button type="submit" class="cursor-pointer">Accept</Button>
 							</form>
 
 							<Button onclick={() => openOfferModal(listing)} class="cursor-pointer"
