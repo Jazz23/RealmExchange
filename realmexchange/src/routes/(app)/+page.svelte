@@ -6,17 +6,71 @@
 	import { invalidateAll } from '$app/navigation';
 	import { alertStore } from '$lib/stores';
 	import { accounts } from '$lib/stores';
+	import SearchBar from '$lib/components/SearchBar.svelte';
 
 	let { data } = $props();
+	console.log('Marketplace data:', data);
 	let selectedListing = $state<any>(null);
 	let selectedOfferAccounts = $state<string[]>([]);
 	let showOfferModal = $state(false);
+	let itemSearch = $state('');
 
 	function openOfferModal(listing: any) {
 		selectedListing = listing;
 		showOfferModal = true;
 		selectedOfferAccounts = [];
 	}
+
+	// Extract all unique items from listings for search suggestions
+	let allItems = $derived.by(() => {
+		const itemSet = new Set<string>();
+		if (data.listings && Array.isArray(data.listings)) {
+			for (const listing of data.listings) {
+				if (listing.accounts && Array.isArray(listing.accounts)) {
+					for (const account of listing.accounts) {
+						if (account.inventory && Array.isArray(account.inventory)) {
+							for (const item of account.inventory) {
+								if (item && typeof item === 'string') {
+									itemSet.add(item);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return Array.from(itemSet).sort();
+	});
+
+	// Filter listings based on item search
+	let filteredListings = $derived.by(() => {
+		try {
+			if (!itemSearch.trim()) {
+				return data.listings || [];
+			}
+
+			const searchTerm = itemSearch.toLowerCase().trim();
+			return (data.listings || []).filter((listing) => {
+				// Check if any account in this listing contains the searched item
+				return (
+					listing.accounts &&
+					Array.isArray(listing.accounts) &&
+					listing.accounts.some(
+						(account: any) =>
+							account.inventory &&
+							Array.isArray(account.inventory) &&
+							account.inventory.some(
+								(item: string) =>
+									typeof item === 'string' && item.toLowerCase().includes(searchTerm)
+							)
+					)
+				);
+			});
+		} catch (error) {
+			console.error('Error filtering listings:', error);
+			return data.listings || [];
+		}
+	});
 </script>
 
 <div class="m-10">
@@ -29,11 +83,32 @@
 		{/if}
 	</div>
 
-	{#if data.listings.length === 0}
-		<p class="text-gray-600">No active listings available.</p>
+	<!-- Item Search Bar -->
+	<div class="mb-6">
+		<label for="item-search" class="mb-2 block text-sm font-medium text-gray-700">
+			Search listings by item:
+		</label>
+		<SearchBar
+			bind:value={itemSearch}
+			items={allItems}
+			placeholder="Enter item name to filter listings..."
+		/>
+		{#if itemSearch.trim()}
+			<p class="mt-1 text-sm text-gray-600">
+				Showing {filteredListings.length} of {data.listings.length} listings
+			</p>
+		{/if}
+	</div>
+
+	{#if filteredListings.length === 0}
+		{#if itemSearch.trim()}
+			<p class="text-gray-600">No listings found containing "{itemSearch}".</p>
+		{:else}
+			<p class="text-gray-600">No active listings available.</p>
+		{/if}
 	{:else}
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-			{#each data.listings as listing}
+			{#each filteredListings as listing}
 				<div class="rounded-lg border-2 border-gray-300 p-6">
 					<div class="mb-4">
 						<h2 class="text-xl font-bold">Listed by: {listing.sellerUsername}</h2>
@@ -83,16 +158,12 @@
 
 												// Add the accounts to the account store
 												const newAccounts = listing.accounts.map((account: any) => ({
-													guid: account.guid,
 													name: account.name,
 													inventory: account.inventory,
-													seasonal: account.seasonal,
+													seasonal: account.seasonal
 												}));
 
-												accounts.update((current) => [
-													...current,
-													...newAccounts,
-												]);
+												accounts.update((current) => [...current, ...newAccounts]);
 											}
 										}
 									};
@@ -134,7 +205,10 @@
 </div>
 
 {#if $alertStore.message}
-	<Alert class="fixed top-4 left-4 z-50 max-w-md" variant={$alertStore.type === 'error' ? 'destructive' : 'default'}>
+	<Alert
+		class="fixed left-4 top-4 z-50 max-w-md"
+		variant={$alertStore.type === 'error' ? 'destructive' : 'default'}
+	>
 		<AlertTitle>{$alertStore.type === 'error' ? 'Error' : 'Success'}</AlertTitle>
 		<AlertDescription>{$alertStore.message}</AlertDescription>
 	</Alert>
@@ -172,7 +246,9 @@
 								if (result.data?.error) {
 									alertStore.show(result.data.error as string, 'error');
 								} else {
-									alertStore.show('Offer submitted! (Note: This is a simplified version. In a full implementation, the seller would review your offer.)');
+									alertStore.show(
+										'Offer submitted! (Note: This is a simplified version. In a full implementation, the seller would review your offer.)'
+									);
 								}
 							}
 						};

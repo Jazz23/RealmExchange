@@ -4,28 +4,20 @@
 	import { goto } from '$app/navigation';
 	import Account from '../inventory/components/Account.svelte';
 	import { alertStore } from '$lib/stores'
-	import { accounts } from '$lib/stores';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
-	import { onMount } from 'svelte';
+	import SearchBar from '$lib/components/SearchBar.svelte';
 
 	let { data } = $props();
 	let selectedAccounts = $state<string[]>([]);
 	let askingPrice = $state<{name: string, quantity: number}[]>([]);
 	let itemSearch = $state('');
-	let filteredItems = $state<string[]>([]);
-	let showItemSelector = $state(false);
 	let isSubmitting = $state(false);
 
 	// Handle items as a promise
 	let items = $state<string[]>([]);
 	let itemsLoading = $state(true);
 
-	const availableAccounts = $accounts.filter(account => !data.listedAccountNames.has(account.name));
-
-	// Set accounts from server data
-	onMount(() => {
-		accounts.set(data.accounts);
-	});
+	const availableAccounts = data.accounts.filter(account => !data.listedAccountNames.has(account.name));
 
 	// Resolve the items promise when it becomes available
 	$effect(() => {
@@ -33,7 +25,6 @@
 			data.items.then((resolvedItems) => {
 				items = resolvedItems;
 				itemsLoading = false;
-				filterItems();
 			}).catch(() => {
 				items = [];
 				itemsLoading = false;
@@ -41,7 +32,6 @@
 		} else if (Array.isArray(data.items)) {
 			items = data.items;
 			itemsLoading = false;
-			filterItems();
 		}
 	});
 
@@ -58,8 +48,6 @@
 			askingPrice = [...askingPrice, { name: item, quantity: 1 }];
 		}
 		itemSearch = '';
-		showItemSelector = false;
-		filteredItems = items.slice(0, 50);
 	}
 
 	function removeItem(itemName: string) {
@@ -71,23 +59,6 @@
 			item.name === itemName ? { ...item, quantity: Math.max(1, quantity) } : item
 		);
 	}
-
-	function filterItems() {
-		if (itemSearch.length > 0) {
-			filteredItems = items
-				.filter((i) => i.toLowerCase().includes(itemSearch.toLowerCase()))
-				.slice(0, 50);
-		} else {
-			filteredItems = items.slice(0, 50);
-		}
-	}
-
-	$effect(() => {
-		// Re-filter items when search term or items change
-		if (items.length > 0 || !itemsLoading) {
-			filterItems();
-		}
-	});
 </script>
 
 <div class="m-10">
@@ -117,36 +88,12 @@
 	<div class="mb-8">
 		<h2 class="mb-4 text-2xl font-bold">Set Asking Price</h2>
 		<div class="mb-4">
-			<div class="relative">
-				<input
-					type="text"
-					bind:value={itemSearch}
-					onfocus={() => (showItemSelector = true)}
-					placeholder="Search for items..."
-					class="w-full rounded-lg border-2 border-gray-300 p-2"
-				/>
-				{#if showItemSelector}
-					<div
-						class="absolute z-10 max-h-64 w-full overflow-y-auto rounded-lg border-2 border-gray-300 bg-white shadow-lg"
-					>
-						{#if itemsLoading}
-							<div class="p-4 text-center text-gray-500">
-								Loading items...
-							</div>
-						{:else if filteredItems.length > 0}
-							{#each filteredItems as item}
-								<button type="button" class="cursor-pointer p-2 hover:bg-gray-100 w-full text-left" onclick={() => addItem(item)}>
-									{item}
-								</button>
-							{/each}
-						{:else}
-							<div class="p-4 text-center text-gray-500">
-								No items found
-							</div>
-						{/if}
-					</div>
-				{/if}
-			</div>
+			<SearchBar
+				bind:value={itemSearch}
+				{items}
+				loading={itemsLoading}
+				onSelect={addItem}
+			/>
 		</div>
 		<div class="flex flex-wrap gap-2">
 			{#each askingPrice as item (item.name)}
