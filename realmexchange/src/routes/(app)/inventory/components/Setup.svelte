@@ -1,12 +1,18 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
+	import {
+		Tooltip,
+		TooltipContent,
+		TooltipProvider,
+		TooltipTrigger
+	} from '$lib/components/ui/tooltip';
+	import { CircleQuestionMark } from '@lucide/svelte';
 
 	let showHWIDSetup = $state(false);
 	let hwidInput = $state('');
 	let { doneSettingHWID = $bindable(false) } = $props();
-    let copied = $state(false);
+	let copied = $state(false);
 	const hwidCommand = `powershell -NoLogo -NoProfile -Command "$bb=(Get-CimInstance Win32_BaseBoard).SerialNumber; $bios=(Get-CimInstance Win32_BIOS).SerialNumber; $os=(Get-CimInstance Win32_OperatingSystem).SerialNumber; $concat=\\"$bb$bios$os\\"; $sha1=[System.Security.Cryptography.SHA1]::Create(); $bytes=[System.Text.Encoding]::UTF8.GetBytes($concat); $hash=$sha1.ComputeHash($bytes); ($hash | ForEach-Object { '{0:x2}' -f $_ }) -join ''"`;
-
 
 	// On hwidInput change, we can close the setup modal. Regex test it with ^[a-f0-9]{40}$
 	$effect(() => {
@@ -30,9 +36,21 @@
 {#if showHWIDSetup}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
 		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
-			<p class="mb-4 text-center text-xl font-bold">
-				Run this CMD command and paste the output here:
-			</p>
+			<div class="mb-4 flex flex-row justify-center gap-1">
+				<p class="mb-4 text-center text-xl font-bold">
+					Run this CMD command and paste the output here:
+				</p>
+				<TooltipProvider>
+					<Tooltip>
+						<TooltipTrigger>
+							<CircleQuestionMark />
+						</TooltipTrigger>
+						<TooltipContent>
+							Rotmg uses your computer's hardware ID (cpu serial number, etc) to verify the access token used to launch the game came from your computer. Realm Exchange needs this so we can give you a valid access token that can launch the Exalt client on your computer.
+						</TooltipContent>
+					</Tooltip>
+				</TooltipProvider>
+			</div>
 			<input
 				type="text"
 				class="mb-4 w-full border p-2"
@@ -42,9 +60,10 @@
 			<p class="mb-4 break-all">{hwidCommand}</p>
 			<!--Copy text button-->
 			<div class="flex justify-center">
-				<Button class="cursor-pointer"
+				<Button
+					class="cursor-pointer"
 					onclick={() => {
-                        copied = true;
+						copied = true;
 						navigator.clipboard.writeText(hwidCommand);
 					}}
 				>
