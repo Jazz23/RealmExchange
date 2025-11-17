@@ -3,6 +3,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { Button } from '$lib/components/ui/button';
 	import * as NavigationMenu from '$lib/components/ui/navigation-menu';
+	import { Github, MessageCircle } from '@lucide/svelte';
 
 	let { children, data } = $props();
 </script>
@@ -16,6 +17,26 @@
 		<a href="/" class="flex items-center">
 			<img src={favicon} alt="Realm Exchange" class="h-8 w-8 mr-2" />
 			<span class="text-lg font-bold">Realm Exchange</span>
+		</a>
+		<a 
+			href="https://github.com/Jazz23/RealmExchange" 
+			target="_blank" 
+			rel="noopener noreferrer"
+			class="ml-3 p-1 rounded-md hover:bg-gray-100 transition-colors flex items-center gap-1"
+			aria-label="View source on GitHub"
+		>
+			<Github size={16} />
+			<span class="text-sm font-medium">GitHub</span>
+		</a>
+		<a 
+			href="https://discord.gg/8dDSrHpWmP" 
+			target="_blank" 
+			rel="noopener noreferrer"
+			class="ml-2 p-1 rounded-md hover:bg-gray-100 transition-colors flex items-center gap-1"
+			aria-label="Join our Discord"
+		>
+			<MessageCircle size={16} />
+			<span class="text-sm font-medium">Discord</span>
 		</a>
 	</div>
 	<NavigationMenu.Root>
