@@ -4,7 +4,7 @@ import { db } from '$lib/server/db/index.js';
 import * as table from '$lib/server/db/schema.js';
 import { createAccount, getAccessToken, loadAccountInventory } from '$lib/server/realmapi';
 import { and, eq } from 'drizzle-orm';
-import { mockCreateAccount, mockRefreshAccount } from '../../../../test/mock.js';
+import { mockCreateAccount, mockLogin, mockRefreshAccount } from '../../../../test/mock.js';
 import { redirect } from '@sveltejs/kit';
 
 export const load = async ({ locals }) => {
@@ -206,6 +206,11 @@ export const actions = {
 
         if (!account) {
             return { error: 'Account not found' };
+        }
+
+        if (account.name.startsWith("TestAccount")) {
+            // In dev, use the mock login
+            return mockLogin();
         }
 
         // Get the HWID for the user

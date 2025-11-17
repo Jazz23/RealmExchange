@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import { MoveUpRight, RefreshCw } from '@lucide/svelte';
+	import { CircleQuestionMark, MoveUpRight, RefreshCw } from '@lucide/svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { accounts } from '$lib/stores';
+	import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '$lib/components/ui/tooltip';
 
 	let {
 		name,
@@ -205,6 +206,19 @@
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
 		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
 			<h2 class="mb-4 text-center text-xl font-bold">CMD Command</h2>
+			<TooltipProvider>
+				<div class="flex flex-row justify-center mb-4 gap-1">
+					<strong class="text-red-500">Don't use the account's vault!</strong>
+					<Tooltip>
+						<TooltipTrigger>
+							<CircleQuestionMark size={16} />
+						</TooltipTrigger>
+						<TooltipContent>
+							Vaults take an unknown amount of time to update, so Realm Exchange doesn't consider them.
+						</TooltipContent>
+					</Tooltip>
+				</div>
+			</TooltipProvider>
 			<p class="mb-4 break-all">{command}</p>
 			<!--Copy text button-->
 			<div class="flex justify-center">

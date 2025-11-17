@@ -265,7 +265,7 @@
 								} else {
 									alertStore.show(
 										isCounterOffer
-											? 'Offer submitted! (Note: This is a simplified version. In a full implementation, the seller would review your offer.)'
+											? 'Offer submitted!'
 											: 'Trade accepted successfully!'
 									);
 									if (!isCounterOffer) {

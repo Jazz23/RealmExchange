@@ -202,7 +202,7 @@ export const actions = {
 				continue;
 			}
 
-			const { accessToken } = await getAccessToken({...account, hwid: ""}); // HWID doesn't matter since we're not logging in
+			const { accessToken } = await getAccessToken({...account, hwid: "0"}); // HWID doesn't matter since we're not logging in
 			if (accessToken === null) {
 				return { error: `Error logging into account ${name}` };
 			}

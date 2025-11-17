@@ -22,6 +22,10 @@
 		"db:clear:accounts:remote": "wrangler d1 execute realm-exchange --remote --command \"DELETE FROM account;\"",
 		"db:clear:users": "wrangler d1 execute realm-exchange --local --persist-to=../.wrangler --command \"DELETE FROM user;\"",
 		"db:clear:users:remote": "wrangler d1 execute realm-exchange --remote --command \"DELETE FROM user;\"",
+		"db:clear:listings:remote": "wrangler d1 execute realm-exchange --remote --command \"DELETE FROM listing;\"",
+		"db:clear:offers:remote": "wrangler d1 execute realm-exchange --remote --command \"DELETE FROM offer;\"",
+		"db:clear:trades:remote": "wrangler d1 execute realm-exchange --remote --command \"DELETE FROM trade;\"",
+		"db:clear:all:remote": "wrangler d1 execute realm-exchange --remote --command \"DELETE FROM session; DELETE FROM account; DELETE FROM trade_listing; DELETE FROM trade_offer; DELETE FROM user;\"",
 		"r2:putobjectsxml": "wrangler r2 object put realm-exchange/Objects.xml --file ../Objects.xml --local --persist-to=../.wrangler",
 		"deploy": "npm run build && wrangler pages deploy",
 		"cf-typegen": "wrangler types src/worker-configuration.d.ts"
