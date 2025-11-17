@@ -10,4 +10,5 @@ The trading hub for Realm of the Mad God! Users will be granted temporary access
 - `npm run dev`
 - Navigate to `localhost:5173` in your browser
 - Wait ~30 seconds to connect
+- Login with either `testuser:testpassword` and or `testuser2:testpassword`
 - Have fun!
