@@ -113,21 +113,26 @@ export async function parseInventory(inventory: string) {
         return null;
     }
 
-    // Parse inventory into normalized hex IDs
-    const itemIds = inventory
+    // Count occurrences of each item ID
+    const itemCounts: Record<string, number> = {};
+    inventory
         .split(",")
         .map(id => parseInt(id, 10))
         .filter(id => id !== -1)
-        .map(id => "0x" + id.toString(16).toLowerCase());
+        .forEach(id => {
+            const hexId = "0x" + id.toString(16).toLowerCase();
+            itemCounts[hexId] = (itemCounts[hexId] || 0) + 1;
+        });
 
-    const foundItems: string[] = [];
+    const uniqueItemIds = Object.keys(itemCounts);
+    const foundItems: Record<string, string> = {};
     const targetAttr = "type";
 
     const parser = new SaxesParser();
 
     parser.on("opentag", (node) => {
-        if (node.attributes[targetAttr] && itemIds.includes(node.attributes[targetAttr])) {
-            foundItems.push(node.attributes.id);
+        if (node.attributes[targetAttr] && uniqueItemIds.includes(node.attributes[targetAttr])) {
+            foundItems[node.attributes[targetAttr]] = node.attributes.id;
         }
     });
 
@@ -150,18 +155,29 @@ export async function parseInventory(inventory: string) {
         const chunk = decoder.decode(value, { stream: true });
         parser.write(chunk);
 
-        // Optional: stop early if all found
-        if (foundItems.length === itemIds.length) {
+        // Stop early if all unique items found
+        if (Object.keys(foundItems).length === uniqueItemIds.length) {
             done = true;
             reader.cancel(); // stop reading from R2
         }
     }
 
-    if (foundItems.length !== itemIds.length) {
+    if (Object.keys(foundItems).length !== uniqueItemIds.length) {
+        console.error("Not all items found in Objects.xml");
         return null;
     }
 
-    return foundItems;
+    // Build the final inventory array with duplicates
+    const result: string[] = [];
+    for (const hexId of uniqueItemIds) {
+        const itemName = foundItems[hexId];
+        const count = itemCounts[hexId];
+        for (let i = 0; i < count; i++) {
+            result.push(itemName);
+        }
+    }
+
+    return result;
 }
 
 export async function getAccessToken(account: { guid: string, password: string, hwid: string }) {
