@@ -38,6 +38,7 @@ export const actions: Actions = {
 				emailVerificationToken,
 				passwordResetToken: null,
 				passwordResetExpiresAt: null,
+				emailNotifications: true,
 				hwid: ""
 			};
 			await db.insert(table.user).values(newUser);

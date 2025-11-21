@@ -9,6 +9,7 @@ export const user = sqliteTable('user', {
 	emailVerificationToken: text('email_verification_token'),
 	passwordResetToken: text('password_reset_token'),
 	passwordResetExpiresAt: integer('password_reset_expires_at', { mode: 'timestamp' }),
+	emailNotifications: integer('email_notifications', { mode: 'boolean' }).notNull().default(true),
 	hwid: text('hwid').notNull().default('')
 });
 

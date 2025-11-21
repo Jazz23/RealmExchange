@@ -331,6 +331,94 @@ export const actions = {
 			.set({ status: 'rejected' })
 			.where(and(eq(table.tradeOffer.listingId, offer.listingId), eq(table.tradeOffer.status, 'pending'), ne(table.tradeOffer.id, offerId)));
 
+		// Send email notification to seller if enabled
+		const seller = await db
+			.select()
+			.from(table.user)
+			.where(eq(table.user.id, locals.user.id))
+			.limit(1)
+			.get();
+
+		if (seller && seller.emailNotifications && seller.email && seller.emailVerified) {
+			try {
+				await sendSaleNotificationEmail(seller.email, {
+					sellerAccountNames: sellerAccountNames,
+					buyerAccountNames: buyerAccountNames,
+					askingPrice: JSON.parse(offer.listing.askingPrice)
+				});
+			} catch (error) {
+				console.error('Failed to send sale notification email:', error);
+				// Don't fail the trade if email fails
+			}
+		}
+
 		return { success: true };
 	}
 };
+
+async function sendSaleNotificationEmail(email: string, tradeDetails: {
+	sellerAccountNames: string[];
+	buyerAccountNames: string[];
+	askingPrice: string[];
+}) {
+	const BREVO_API_KEY = process.env.BREVO_API_KEY;
+	if (!BREVO_API_KEY) {
+		console.error('BREVO_API_KEY not configured');
+		throw new Error('Email service not configured');
+	}
+
+	const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+		method: 'POST',
+		headers: {
+			'accept': 'application/json',
+			'api-key': BREVO_API_KEY,
+			'content-type': 'application/json',
+		},
+		body: JSON.stringify({
+			sender: {
+				name: 'RealmExchange',
+				email: 'noreply@realmexchange.com'
+			},
+			to: [{
+				email: email,
+				name: email
+			}],
+			subject: 'Your item has been sold on RealmExchange!',
+			htmlContent: `
+				<h1>Congratulations! Your item has been sold!</h1>
+				<p>One of your listings on RealmExchange has been successfully traded.</p>
+
+				<h2>Trade Details:</h2>
+				<p><strong>You received:</strong> ${tradeDetails.buyerAccountNames.join(', ')}</p>
+				<p><strong>You gave:</strong> ${tradeDetails.sellerAccountNames.join(', ')}</p>
+				<p><strong>Asking price was:</strong> ${tradeDetails.askingPrice.join(', ')}</p>
+
+				<p>You can view your updated inventory in your <a href="${process.env.BASE_URL || 'http://localhost:5173'}/inventory">account inventory</a>.</p>
+
+				<p>Happy trading!</p>
+				<p>The RealmExchange Team</p>
+			`,
+			textContent: `
+				Congratulations! Your item has been sold!
+
+				One of your listings on RealmExchange has been successfully traded.
+
+				Trade Details:
+				You received: ${tradeDetails.buyerAccountNames.join(', ')}
+				You gave: ${tradeDetails.sellerAccountNames.join(', ')}
+				Asking price was: ${tradeDetails.askingPrice.join(', ')}
+
+				You can view your updated inventory in your account inventory: ${process.env.BASE_URL || 'http://localhost:5173'}/inventory
+
+				Happy trading!
+				The RealmExchange Team
+			`
+		})
+	});
+
+	if (!response.ok) {
+		const error = await response.text();
+		console.error('Brevo API error:', error);
+		throw new Error('Failed to send sale notification email');
+	}
+}

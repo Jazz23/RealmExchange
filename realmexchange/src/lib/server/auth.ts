@@ -17,7 +17,9 @@ export const sessionJWTCookieName = 'auth-session-jwt';
 interface TokenUser {
 	id: string;
 	username: string;
-	// Add other user fields as needed
+	email: string | null;
+	emailVerified: boolean;
+	emailNotifications: boolean;
 }
 
 export function hashPassword(password: string): string {
@@ -64,7 +66,7 @@ export async function validateSessionToken(token: string) {
 	const [result] = await db
 		.select({
 			// Adjust user table here to tweak returned data
-			user: { id: table.user.id, username: table.user.username },
+			user: { id: table.user.id, username: table.user.username, email: table.user.email, emailVerified: table.user.emailVerified, emailNotifications: table.user.emailNotifications },
 			session: table.session
 		})
 		.from(table.session)
