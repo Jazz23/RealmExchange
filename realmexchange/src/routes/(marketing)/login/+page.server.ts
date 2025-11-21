@@ -39,6 +39,11 @@ export const actions: Actions = {
 			return fail(400, { message: 'Incorrect username or password' });
 		}
 
+		// Check if email is verified
+		if (!existingUser.emailVerified) {
+			return fail(400, { message: 'Please verify your email before logging in' });
+		}
+
 		await auth.createAndSetSessionAndJWT(event, existingUser);
 
 		return redirect(302, '/');

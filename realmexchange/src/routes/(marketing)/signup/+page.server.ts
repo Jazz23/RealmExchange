@@ -11,10 +11,14 @@ export const actions: Actions = {
 	register: async (event) => {
 		const formData = await event.request.formData();
 		const username = formData.get('username');
+		const email = formData.get('email');
 		const password = formData.get('password');
 
 		if (!validateUsername(username)) {
 			return fail(400, { message: 'Invalid username' });
+		}
+		if (!validateEmail(email)) {
+			return fail(400, { message: 'Invalid email' });
 		}
 		if (!validatePassword(password)) {
 			return fail(400, { message: 'Invalid password' });
@@ -22,20 +26,40 @@ export const actions: Actions = {
 
 		const userId = generateUserId();
 		const passwordHash = auth.hashPassword(password);
+		const emailVerificationToken = generateEmailVerificationToken();
 
 		try {
-			const newUser: User = { id: userId, username, passwordHash, hwid: "" };
+			const newUser: User = {
+				id: userId,
+				username,
+				email,
+				passwordHash,
+				emailVerified: false,
+				emailVerificationToken,
+				hwid: ""
+			};
 			await db.insert(table.user).values(newUser);
 
-			await auth.createAndSetSessionAndJWT(event, newUser);
+			// Send verification email via Brevo
+			await sendVerificationEmail(email, emailVerificationToken);
+
+			// Don't create session yet - user needs to verify email first
+			return {
+				success: true,
+				message: 'Account created! Please check your email to verify your account.'
+			};
 		} catch (err) {
-			if (err instanceof DrizzleQueryError && err.cause?.message?.includes('UNIQUE constraint failed: user.username')) {
-				return fail(400, { message: 'Username already taken' });
+			if (err instanceof DrizzleQueryError) {
+				if (err.cause?.message?.includes('UNIQUE constraint failed: user.username')) {
+					return fail(400, { message: 'Username already taken' });
+				}
+				if (err.cause?.message?.includes('UNIQUE constraint failed: user.email')) {
+					return fail(400, { message: 'Email already registered' });
+				}
 			}
 
 			return fail(500, { message: 'An error has occurred' });
 		}
-		return redirect(302, '/');
 	}
 };
 
@@ -44,6 +68,12 @@ function generateUserId() {
 	const bytes = crypto.getRandomValues(new Uint8Array(15));
 	const id = encodeBase32LowerCase(bytes);
 	return id;
+}
+
+function generateEmailVerificationToken() {
+	// Generate a secure token for email verification
+	const bytes = crypto.getRandomValues(new Uint8Array(32));
+	return encodeBase32LowerCase(bytes);
 }
 
 function validateUsername(username: unknown): username is string {
@@ -55,6 +85,62 @@ function validateUsername(username: unknown): username is string {
 	);
 }
 
+function validateEmail(email: unknown): email is string {
+	return (
+		typeof email === 'string' &&
+		email.length >= 3 &&
+		email.length <= 255 &&
+		/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+	);
+}
+
 function validatePassword(password: unknown): password is string {
 	return typeof password === 'string' && password.length >= 6 && password.length <= 255;
+}
+
+async function sendVerificationEmail(email: string, token: string) {
+	const BREVO_API_KEY = process.env.BREVO_API_KEY;
+	if (!BREVO_API_KEY) {
+		console.error('BREVO_API_KEY not configured');
+		throw new Error('Email service not configured');
+	}
+
+	const verificationUrl = `${process.env.BASE_URL || 'http://localhost:5173'}/verify-email?token=${token}`;
+
+	const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+		method: 'POST',
+		headers: {
+			'accept': 'application/json',
+			'api-key': BREVO_API_KEY,
+			'content-type': 'application/json',
+		},
+		body: JSON.stringify({
+			sender: {
+				name: 'RealmExchange',
+				email: 'noreply@realmexchange.com' // You'll need to configure this in Brevo
+			},
+			to: [{
+				email: email,
+				name: email
+			}],
+			subject: 'Verify your RealmExchange account',
+			htmlContent: `
+				<h1>Welcome to RealmExchange!</h1>
+				<p>Please click the link below to verify your email address:</p>
+				<a href="${verificationUrl}">Verify Email</a>
+				<p>If you didn't create an account, you can ignore this email.</p>
+			`,
+			textContent: `
+				Welcome to RealmExchange!
+				Please visit this link to verify your email address: ${verificationUrl}
+				If you didn't create an account, you can ignore this email.
+			`
+		})
+	});
+
+	if (!response.ok) {
+		const error = await response.text();
+		console.error('Brevo API error:', error);
+		throw new Error('Failed to send verification email');
+	}
 }

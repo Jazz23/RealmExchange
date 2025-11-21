@@ -71,6 +71,20 @@
       "when": 1763271896846,
       "tag": "0009_handy_grey_gargoyle",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1763752968676,
+      "tag": "0010_sticky_christian_walker",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1763752998887,
+      "tag": "0011_milky_thanos",
+      "breakpoints": true
     }
   ]
 }

@@ -17,7 +17,12 @@
 		<Field.Group>
 			<Field.Field>
 				<Field.Label for="username">Username</Field.Label>
-				<Input id="username" name="username" type="text" placeholder="johndoe" required />
+				<Input id="username" name="username" type="text" required />
+			</Field.Field>
+			<Field.Field>
+				<Field.Label for="email">Email</Field.Label>
+				<Input id="email" name="email" type="email" required />
+				<Field.Description>We'll send you a verification email.</Field.Description>
 			</Field.Field>
 			<Field.Field>
 				<Field.Label for="password">Password</Field.Label>
