@@ -43,6 +43,9 @@
 				<FieldDescription class="text-center">
 					Don't have an account? <a href="/signup">Sign up</a>
 				</FieldDescription>
+				<FieldDescription class="text-center">
+					<a href="/forgot-password" class="text-sm hover:text-blue-500">Forgot password?</a>
+				</FieldDescription>
 			</Field>
 		</FieldGroup>
 	</Card.Content>

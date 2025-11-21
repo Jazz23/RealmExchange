@@ -7,6 +7,8 @@ export const user = sqliteTable('user', {
 	passwordHash: text('password_hash').notNull(),
 	emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
 	emailVerificationToken: text('email_verification_token'),
+	passwordResetToken: text('password_reset_token'),
+	passwordResetExpiresAt: integer('password_reset_expires_at', { mode: 'timestamp' }),
 	hwid: text('hwid').notNull().default('')
 });
 
