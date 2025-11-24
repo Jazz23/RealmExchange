@@ -46,11 +46,8 @@
 									checked={data.user.emailNotifications}
 									class="rounded border-gray-300"
 								/>
-								<span class="text-sm">Email notifications for item sales</span>
+								<span class="text-sm">Email notifications for item sales and counter offers</span>
 							</label>
-							<FieldDescription>
-								Receive email notifications when your items are sold
-							</FieldDescription>
 						</Field>
 
 						<Field>

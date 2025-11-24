@@ -119,22 +119,22 @@ async function sendVerificationEmail(email: string, token: string) {
 		},
 		body: JSON.stringify({
 			sender: {
-				name: 'RealmExchange',
+				name: 'Realm Exchange',
 				email: 'noreply@realmexchange.com' // You'll need to configure this in Brevo
 			},
 			to: [{
 				email: email,
 				name: email
 			}],
-			subject: 'Verify your RealmExchange account',
+			subject: 'Verify your Realm Exchange account',
 			htmlContent: `
-				<h1>Welcome to RealmExchange!</h1>
+				<h1>Welcome to Realm Exchange!</h1>
 				<p>Please click the link below to verify your email address:</p>
 				<a href="${verificationUrl}">Verify Email</a>
 				<p>If you didn't create an account, you can ignore this email.</p>
 			`,
 			textContent: `
-				Welcome to RealmExchange!
+				Welcome to Realm Exchange!
 				Please visit this link to verify your email address: ${verificationUrl}
 				If you didn't create an account, you can ignore this email.
 			`

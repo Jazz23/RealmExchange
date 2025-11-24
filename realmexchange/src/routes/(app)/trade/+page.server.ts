@@ -359,13 +359,18 @@ export const actions = {
 async function sendSaleNotificationEmail(email: string, tradeDetails: {
 	sellerAccountNames: string[];
 	buyerAccountNames: string[];
-	askingPrice: string[];
+	askingPrice: any[];
 }) {
 	const BREVO_API_KEY = process.env.BREVO_API_KEY;
 	if (!BREVO_API_KEY) {
 		console.error('BREVO_API_KEY not configured');
 		throw new Error('Email service not configured');
 	}
+
+	// Format asking price items
+	const formattedAskingPrice = tradeDetails.askingPrice.map((item: any) => 
+		`${item.name}${item.quantity > 1 ? ` (${item.quantity})` : ''}${item.seasonal ? ' (Seasonal)' : ''}`
+	).join(', ');
 
 	const response = await fetch('https://api.brevo.com/v3/smtp/email', {
 		method: 'POST',
@@ -376,42 +381,42 @@ async function sendSaleNotificationEmail(email: string, tradeDetails: {
 		},
 		body: JSON.stringify({
 			sender: {
-				name: 'RealmExchange',
+				name: 'Realm Exchange',
 				email: 'noreply@realmexchange.com'
 			},
 			to: [{
 				email: email,
 				name: email
 			}],
-			subject: 'Your item has been sold on RealmExchange!',
+			subject: 'Your item has been sold on Realm Exchange!',
 			htmlContent: `
 				<h1>Congratulations! Your item has been sold!</h1>
-				<p>One of your listings on RealmExchange has been successfully traded.</p>
+				<p>One of your listings on Realm Exchange has been successfully traded.</p>
 
 				<h2>Trade Details:</h2>
 				<p><strong>You received:</strong> ${tradeDetails.buyerAccountNames.join(', ')}</p>
 				<p><strong>You gave:</strong> ${tradeDetails.sellerAccountNames.join(', ')}</p>
-				<p><strong>Asking price was:</strong> ${tradeDetails.askingPrice.join(', ')}</p>
+				<p><strong>Asking price was:</strong> ${formattedAskingPrice}</p>
 
 				<p>You can view your updated inventory in your <a href="${process.env.BASE_URL || 'http://localhost:5173'}/inventory">account inventory</a>.</p>
 
 				<p>Happy trading!</p>
-				<p>The RealmExchange Team</p>
+				<p>The Realm Exchange Team</p>
 			`,
 			textContent: `
 				Congratulations! Your item has been sold!
 
-				One of your listings on RealmExchange has been successfully traded.
+				One of your listings on Realm Exchange has been successfully traded.
 
 				Trade Details:
 				You received: ${tradeDetails.buyerAccountNames.join(', ')}
 				You gave: ${tradeDetails.sellerAccountNames.join(', ')}
-				Asking price was: ${tradeDetails.askingPrice.join(', ')}
+				Asking price was: ${formattedAskingPrice}
 
 				You can view your updated inventory in your account inventory: ${process.env.BASE_URL || 'http://localhost:5173'}/inventory
 
 				Happy trading!
-				The RealmExchange Team
+				The Realm Exchange Team
 			`
 		})
 	});

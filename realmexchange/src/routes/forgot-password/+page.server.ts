@@ -87,17 +87,17 @@ async function sendPasswordResetEmail(email: string, token: string) {
 		},
 		body: JSON.stringify({
 			sender: {
-				name: 'RealmExchange',
+				name: 'Realm Exchange',
 				email: 'noreply@realmexchange.com'
 			},
 			to: [{
 				email: email,
 				name: email
 			}],
-			subject: 'Reset your RealmExchange password',
+			subject: 'Reset your Realm Exchange password',
 			htmlContent: `
 				<h1>Password Reset Request</h1>
-				<p>You requested a password reset for your RealmExchange account.</p>
+				<p>You requested a password reset for your Realm Exchange account.</p>
 				<p>Click the link below to reset your password:</p>
 				<a href="${resetUrl}">Reset Password</a>
 				<p>This link will expire in 24 hours.</p>
@@ -105,7 +105,7 @@ async function sendPasswordResetEmail(email: string, token: string) {
 			`,
 			textContent: `
 				Password Reset Request
-				You requested a password reset for your RealmExchange account.
+				You requested a password reset for your Realm Exchange account.
 				Visit this link to reset your password: ${resetUrl}
 				This link will expire in 24 hours.
 				If you didn't request this reset, you can ignore this email.

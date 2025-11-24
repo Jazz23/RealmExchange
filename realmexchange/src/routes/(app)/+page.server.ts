@@ -391,6 +391,29 @@ export const actions = {
 			createdAt: new Date()
 		});
 
+		// Send email notification to seller if enabled
+		const seller = await db
+			.select()
+			.from(table.user)
+			.where(eq(table.user.id, listing.sellerId))
+			.limit(1)
+			.get();
+
+		if (seller && seller.emailNotifications && seller.email && seller.emailVerified) {
+			try {
+				await sendCounterOfferNotificationEmail(seller.email, {
+					listingId: listingId,
+					buyerUsername: locals.user.username,
+					offeredAccountNames: names,
+					listingAccountNames: JSON.parse(listing.accountNames),
+					askingPrice: JSON.parse(listing.askingPrice)
+				});
+			} catch (error) {
+				console.error('Failed to send counter offer notification email:', error);
+				// Don't fail the offer creation if email fails
+			}
+		}
+
 		return { success: true };
 	},
 
@@ -431,13 +454,18 @@ export const actions = {
 async function sendSaleNotificationEmail(email: string, tradeDetails: {
 	sellerAccountNames: string[];
 	buyerAccountNames: string[];
-	askingPrice: string[];
+	askingPrice: any[];
 }) {
 	const BREVO_API_KEY = process.env.BREVO_API_KEY;
 	if (!BREVO_API_KEY) {
 		console.error('BREVO_API_KEY not configured');
 		throw new Error('Email service not configured');
 	}
+
+	// Format asking price items
+	const formattedAskingPrice = tradeDetails.askingPrice.map((item: any) => 
+		`${item.name}${item.quantity > 1 ? ` (${item.quantity})` : ''}${item.seasonal ? ' (Seasonal)' : ''}`
+	).join(', ');
 
 	const response = await fetch('https://api.brevo.com/v3/smtp/email', {
 		method: 'POST',
@@ -448,42 +476,42 @@ async function sendSaleNotificationEmail(email: string, tradeDetails: {
 		},
 		body: JSON.stringify({
 			sender: {
-				name: 'RealmExchange',
+				name: 'Realm Exchange',
 				email: 'noreply@realmexchange.com'
 			},
 			to: [{
 				email: email,
 				name: email
 			}],
-			subject: 'Your item has been sold on RealmExchange!',
+			subject: 'Your item has been sold on Realm Exchange!',
 			htmlContent: `
 				<h1>Congratulations! Your item has been sold!</h1>
-				<p>One of your listings on RealmExchange has been successfully traded.</p>
+				<p>One of your listings on Realm Exchange has been successfully traded.</p>
 
 				<h2>Trade Details:</h2>
 				<p><strong>You received:</strong> ${tradeDetails.buyerAccountNames.join(', ')}</p>
 				<p><strong>You gave:</strong> ${tradeDetails.sellerAccountNames.join(', ')}</p>
-				<p><strong>Asking price was:</strong> ${tradeDetails.askingPrice.join(', ')}</p>
+				<p><strong>Asking price was:</strong> ${formattedAskingPrice}</p>
 
 				<p>You can view your updated inventory in your <a href="${process.env.BASE_URL || 'http://localhost:5173'}/inventory">account inventory</a>.</p>
 
 				<p>Happy trading!</p>
-				<p>The RealmExchange Team</p>
+				<p>The Realm Exchange Team</p>
 			`,
 			textContent: `
 				Congratulations! Your item has been sold!
 
-				One of your listings on RealmExchange has been successfully traded.
+				One of your listings on Realm Exchange has been successfully traded.
 
 				Trade Details:
 				You received: ${tradeDetails.buyerAccountNames.join(', ')}
 				You gave: ${tradeDetails.sellerAccountNames.join(', ')}
-				Asking price was: ${tradeDetails.askingPrice.join(', ')}
+				Asking price was: ${formattedAskingPrice}
 
 				You can view your updated inventory in your account inventory: ${process.env.BASE_URL || 'http://localhost:5173'}/inventory
 
 				Happy trading!
-				The RealmExchange Team
+				The Realm Exchange Team
 			`
 		})
 	});
@@ -492,5 +520,126 @@ async function sendSaleNotificationEmail(email: string, tradeDetails: {
 		const error = await response.text();
 		console.error('Brevo API error:', error);
 		throw new Error('Failed to send sale notification email');
+	}
+}
+
+async function sendCounterOfferNotificationEmail(email: string, offerDetails: {
+	listingId: string;
+	buyerUsername: string;
+	offeredAccountNames: string[];
+	listingAccountNames: string[];
+	askingPrice: any[];
+}) {
+	const BREVO_API_KEY = process.env.BREVO_API_KEY;
+	if (!BREVO_API_KEY) {
+		console.error('BREVO_API_KEY not configured');
+		throw new Error('Email service not configured');
+	}
+
+	// Get inventory from offered accounts
+	const offeredItems: Record<string, number> = {};
+	for (const accountName of offerDetails.offeredAccountNames) {
+		const account = await db
+			.select({ inventoryRaw: table.account.inventoryRaw })
+			.from(table.account)
+			.where(eq(table.account.name, accountName))
+			.limit(1)
+			.get();
+		
+		if (account) {
+			const items = account.inventoryRaw.split(',').filter(i => i);
+			for (const item of items) {
+				offeredItems[item] = (offeredItems[item] || 0) + 1;
+			}
+		}
+	}
+
+	// Get inventory from listing accounts
+	const listingItems: Record<string, number> = {};
+	for (const accountName of offerDetails.listingAccountNames) {
+		const account = await db
+			.select({ inventoryRaw: table.account.inventoryRaw })
+			.from(table.account)
+			.where(eq(table.account.name, accountName))
+			.limit(1)
+			.get();
+		
+		if (account) {
+			const items = account.inventoryRaw.split(',').filter(i => i);
+			for (const item of items) {
+				listingItems[item] = (listingItems[item] || 0) + 1;
+			}
+		}
+	}
+
+	// Format items
+	const formatItems = (items: Record<string, number>) => 
+		Object.entries(items)
+			.map(([name, count]) => `${name}${count > 1 ? ` (${count})` : ''}`)
+			.join(', ');
+
+	const formattedOfferedItems = formatItems(offeredItems);
+	const formattedListingItems = formatItems(listingItems);
+
+	// Format asking price items
+	const formattedAskingPrice = offerDetails.askingPrice.map((item: any) => 
+		`${item.name}${item.quantity > 1 ? ` (${item.quantity})` : ''}${item.seasonal ? ' (Seasonal)' : ''}`
+	).join(', ');
+
+	const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+		method: 'POST',
+		headers: {
+			'accept': 'application/json',
+			'api-key': BREVO_API_KEY,
+			'content-type': 'application/json',
+		},
+		body: JSON.stringify({
+			sender: {
+				name: 'Realm Exchange',
+				email: 'noreply@realmexchange.com'
+			},
+			to: [{
+				email: email,
+				name: email
+			}],
+			subject: 'New counter offer received on Realm Exchange!',
+			htmlContent: `
+				<h1>You have received a counter offer!</h1>
+				<p>${offerDetails.buyerUsername} has made a counter offer on one of your listings.</p>
+
+				<h2>Offer Details:</h2>
+				<p><strong>Buyer:</strong> ${offerDetails.buyerUsername}</p>
+				<p><strong>They offered:</strong> ${formattedOfferedItems}</p>
+				<p><strong>Your listing:</strong> ${formattedListingItems}</p>
+				<p><strong>Your asking price:</strong> ${formattedAskingPrice}</p>
+
+				<p>You can review and accept or reject this offer in your <a href="${process.env.BASE_URL || 'http://localhost:5173'}/trade">trade management page</a>.</p>
+
+				<p>Happy trading!</p>
+				<p>The Realm Exchange Team</p>
+			`,
+			textContent: `
+				You have received a counter offer!
+
+				${offerDetails.buyerUsername} has made a counter offer on one of your listings.
+
+				Offer Details:
+				Buyer: ${offerDetails.buyerUsername}
+				They offered: ${formattedOfferedItems}
+				Your listing: ${formattedListingItems}
+				Your asking price: ${formattedAskingPrice}
+
+				You can review and accept or reject this offer in your trade management page: ${process.env.BASE_URL || 'http://localhost:5173'}/trade
+
+				Happy trading!
+				The Realm Exchange Team
+			`
+		})
+	});
+
+	if (!response.ok) {
+		const error = await response.text();
+		console.error('Brevo API error:', error);
+		throw new Error('Failed to send counter offer notification email');
 	}
 }
