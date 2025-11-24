@@ -1,0 +1,1 @@
+ALTER TABLE `user` ADD `email_verification_expires_at` integer;

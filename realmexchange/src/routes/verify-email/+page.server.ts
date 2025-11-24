@@ -29,12 +29,21 @@ export const load: PageServerLoad = async ({ url }) => {
 			};
 		}
 
+		// Check if token has expired
+		if (user[0].emailVerificationExpiresAt && new Date() > user[0].emailVerificationExpiresAt) {
+			return {
+				verified: false,
+				error: 'Verification token has expired'
+			};
+		}
+
 		// Update user to mark email as verified and clear the token
 		await db
 			.update(table.user)
 			.set({
 				emailVerified: true,
-				emailVerificationToken: null
+				emailVerificationToken: null,
+				emailVerificationExpiresAt: null
 			})
 			.where(eq(table.user.id, user[0].id));
 

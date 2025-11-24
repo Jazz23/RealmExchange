@@ -27,6 +27,7 @@ export const actions: Actions = {
 		const userId = generateUserId();
 		const passwordHash = auth.hashPassword(password);
 		const emailVerificationToken = generateEmailVerificationToken();
+		const emailVerificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
 		try {
 			const newUser: User = {
@@ -36,6 +37,7 @@ export const actions: Actions = {
 				passwordHash,
 				emailVerified: false,
 				emailVerificationToken,
+				emailVerificationExpiresAt,
 				passwordResetToken: null,
 				passwordResetExpiresAt: null,
 				emailNotifications: true,

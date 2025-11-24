@@ -34,8 +34,8 @@
 
 						<Field>
 							<FieldLabel for="email">Email</FieldLabel>
-							<Input id="email" name="email" type="email" value={data.user.email || ''} readonly />
-							<FieldDescription>Email address (verified: {data.user.emailVerified ? 'Yes' : 'No'})</FieldDescription>
+							<Input id="email" name="email" type="email" value={data.user.email || ''} />
+							<FieldDescription>Changing your email will require verification</FieldDescription>
 						</Field>
 
 						<Field>
@@ -63,7 +63,11 @@
 
 		{#if form?.success}
 			<div class="mt-4 rounded-lg border bg-green-50 p-4 text-center text-green-800 dark:bg-green-900 dark:text-green-200">
-				Settings saved successfully!
+				{#if form.emailChanged}
+					Settings saved! A verification email has been sent to your new email address. Please check your email and click the verification link to complete the email change.
+				{:else}
+					Settings saved successfully!
+				{/if}
 			</div>
 		{:else if form?.message}
 			<p class="mt-4 text-center text-red-500">{form.message}</p>
