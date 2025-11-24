@@ -18,7 +18,7 @@ export async function load({ locals }) {
 		.innerJoin(table.user, eq(table.tradeListing.sellerId, table.user.id))
 		.where(eq(table.tradeListing.status, 'active'));
 
-	// For each listing, get the account details
+	// For each listing, get the account details and check for pending offers
 	const listingsWithAccounts = await Promise.all(
 		listings.map(async (listing) => {
 			const names = JSON.parse(listing.accountNames);
@@ -54,10 +54,27 @@ export async function load({ locals }) {
 				})
 			);
 
+			// Check if current user has a pending offer on this listing
+			let hasPendingOffer = false;
+			if (locals.user) {
+				const existingOffer = await db
+					.select()
+					.from(table.tradeOffer)
+					.where(and(
+						eq(table.tradeOffer.listingId, listing.id),
+						eq(table.tradeOffer.buyerId, locals.user.id),
+						eq(table.tradeOffer.status, 'pending')
+					))
+					.limit(1)
+					.get();
+				hasPendingOffer = !!existingOffer;
+			}
+
 			return {
 				...listing,
 				accounts: allAccounts.filter((a): a is NonNullable<typeof a> => a !== null),
-				askingPriceItems: JSON.parse(listing.askingPrice)
+				askingPriceItems: JSON.parse(listing.askingPrice),
+				hasPendingOffer
 			};
 		})
 	);
@@ -353,6 +370,22 @@ export const actions = {
 		// Cannot offer on your own listing
 		if (listing.sellerId === locals.user.id) {
 			return { error: 'Cannot offer on your own listing' };
+		}
+
+		// Check if user already has a pending offer on this listing
+		const existingOffer = await db
+			.select()
+			.from(table.tradeOffer)
+			.where(and(
+				eq(table.tradeOffer.listingId, listingId),
+				eq(table.tradeOffer.buyerId, locals.user.id),
+				eq(table.tradeOffer.status, 'pending')
+			))
+			.limit(1)
+			.get();
+
+		if (existingOffer) {
+			return { error: 'You already have a pending offer on this listing' };
 		}
 
 		// Verify the user owns all the offered accounts

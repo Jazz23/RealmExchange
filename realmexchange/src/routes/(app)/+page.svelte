@@ -16,6 +16,17 @@
 	let showModal = $state(false);
 	let isCounterOffer = $state(false);
 	let itemSearch = $state('');
+	let pendingOffers = $state<Set<string>>(new Set());
+
+	// Initialize pending offers from server data
+	$effect(() => {
+		if (data.listings) {
+			const serverPendingOffers = data.listings
+				.filter((listing: any) => listing.hasPendingOffer)
+				.map((listing: any) => listing.id);
+			pendingOffers = new Set(serverPendingOffers);
+		}
+	});
 
 	function openAcceptModal(listing: any) {
 		selectedListing = listing;
@@ -127,6 +138,44 @@
 			return data.listings || [];
 		}
 	});
+
+	// Merge server data with local pending offers state
+	let listingsWithPendingState = $derived.by(() => {
+		return (data.listings || []).map(listing => ({
+			...listing,
+			hasPendingOffer: listing.hasPendingOffer || pendingOffers.has(listing.id)
+		}));
+	});
+
+	// Filter listings based on item search (using merged data)
+	let filteredListingsWithState = $derived.by(() => {
+		try {
+			if (!itemSearch.trim()) {
+				return listingsWithPendingState;
+			}
+
+			const searchTerm = itemSearch.toLowerCase().trim();
+			return listingsWithPendingState.filter((listing) => {
+				// Check if any account in this listing contains the searched item
+				return (
+					listing.accounts &&
+					Array.isArray(listing.accounts) &&
+					listing.accounts.some(
+						(account: any) =>
+							account.inventory &&
+							Array.isArray(account.inventory) &&
+							account.inventory.some(
+								(item: string) =>
+									typeof item === 'string' && item.toLowerCase().includes(searchTerm)
+							)
+					)
+				);
+			});
+		} catch (error) {
+			console.error('Error filtering listings:', error);
+			return listingsWithPendingState;
+		}
+	});
 </script>
 
 <div class="m-10">
@@ -151,12 +200,12 @@
 		/>
 		{#if itemSearch.trim()}
 			<p class="mt-1 text-sm text-gray-600">
-				Showing {filteredListings.length} of {data.listings.length} listings
+				Showing {filteredListingsWithState.length} of {listingsWithPendingState.length} listings
 			</p>
 		{/if}
 	</div>
 
-	{#if filteredListings.length === 0}
+	{#if filteredListingsWithState.length === 0}
 		{#if itemSearch.trim()}
 			<p class="text-gray-600">No listings found containing "{itemSearch}".</p>
 		{:else}
@@ -164,7 +213,7 @@
 		{/if}
 	{:else}
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-			{#each filteredListings as listing}
+			{#each filteredListingsWithState as listing}
 				<TradeListing
 					{listing}
 					currentUserId={data.user?.id}
@@ -268,7 +317,10 @@
 											? 'Offer submitted!'
 											: 'Trade accepted successfully!'
 									);
-									if (!isCounterOffer) {
+									if (isCounterOffer) {
+										// Immediately mark this listing as having a pending offer
+										pendingOffers = new Set([...pendingOffers, selectedListing.id]);
+									} else {
 										await invalidateAll();
 										// Add the accounts to the account store
 										const newAccounts = selectedListing.accounts.map((account: any) => ({

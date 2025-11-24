@@ -82,7 +82,9 @@
 				<Button onclick={() => onAccept(listing)} class="cursor-pointer">Accept</Button>
 			{/if}
 			{#if onMakeOffer}
-				<Button onclick={() => onMakeOffer(listing)} class="cursor-pointer">Make Counter Offer</Button>
+				<Button onclick={() => onMakeOffer(listing)} class="cursor-pointer" disabled={listing.hasPendingOffer}>
+					{listing.hasPendingOffer ? 'Offer Pending' : 'Make Counter Offer'}
+				</Button>
 			{/if}
 		</div>
 	{:else if currentUserId && currentUserId === listing.sellerId}
