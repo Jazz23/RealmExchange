@@ -14,8 +14,7 @@
 		"setup": "cd realmexchange && npm install && npm run setup"
 	},
 	"features": {
-		"ghcr.io/devcontainers-extra/features/cloudflare-wrangler:1": {},
-		"ghcr.io/warrenbuckley/codespace-features/sqlite:1": {}
+		"ghcr.io/devcontainers-extra/features/cloudflare-wrangler:1": {}
 	},
 	"customizations": {
 		"vscode": {
