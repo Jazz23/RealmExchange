@@ -32,7 +32,6 @@
 			<Field.Group>
 				<Field.Field>
 					<Button type="submit" class="cursor-pointer">Create Account</Button>
-					<Button variant="outline" type="button" class="cursor-pointer">Sign up with Google</Button>
 					<Field.Description class="px-6 text-center">
 						Already have an account? <a href="/login">Sign in</a>
 					</Field.Description>

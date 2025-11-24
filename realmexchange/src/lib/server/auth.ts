@@ -1,7 +1,7 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { sha256 } from '@oslojs/crypto/sha2';
-import { encodeBase64url, encodeHexLowerCase } from '@oslojs/encoding';
+import { encodeBase64url, encodeHexLowerCase, encodeBase32LowerCase } from '@oslojs/encoding';
 import * as oslo_encoding from "@oslojs/encoding";
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
@@ -48,6 +48,13 @@ export function generateSessionToken() {
 	const bytes = crypto.getRandomValues(new Uint8Array(18));
 	const token = encodeBase64url(bytes);
 	return token;
+}
+
+export function generateUserId() {
+	// ID with 120 bits of entropy, or about the same as UUID v4.
+	const bytes = crypto.getRandomValues(new Uint8Array(15));
+	const id = encodeBase32LowerCase(bytes);
+	return id;
 }
 
 export async function createSession(token: string, userId: string) {
@@ -126,6 +133,22 @@ export function deleteSessionJWTCookie(event: RequestEvent) {
 	event.cookies.delete(sessionJWTCookieName, {
 		path: '/'
 	});
+}
+
+export function getSessionTokenCookie(token: string, expiresAt: Date): string {
+	return `${sessionCookieName}=${token}; Path=/; Expires=${expiresAt.toUTCString()}; HttpOnly; Secure; SameSite=Lax`;
+}
+
+export function getSessionJWTCookie(jwt: string, expiresAt: Date): string {
+	return `${sessionJWTCookieName}=${jwt}; Path=/; Expires=${expiresAt.toUTCString()}; HttpOnly; Secure; SameSite=Lax`;
+}
+
+export function getDeleteSessionTokenCookie(): string {
+	return `${sessionCookieName}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax`;
+}
+
+export function getDeleteSessionJWTCookie(): string {
+	return `${sessionJWTCookieName}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax`;
 }
 
 // -------------------------------------------- JWT Implementation --------------------------------------------
@@ -295,6 +318,19 @@ export async function validateSessionJWT(jwt: string) {
 	};
 
 	return { session, user: body.user as TokenUser };
+}
+
+export async function createSessionAndCookies(user: User) {
+	// Remove old sessions from the database
+	await db.delete(table.session).where(eq(table.session.userId, user.id));
+
+	// Create new session and JWT and store in database
+	const sessionToken = generateSessionToken();
+	const session = await createSession(sessionToken, user.id);
+	const { sessionJWT, exp: jwtExpiration } = await createSessionJWT(session, user);
+	const sessionCookie = getSessionTokenCookie(sessionToken, session.expiresAt);
+	const jwtCookie = getSessionJWTCookie(sessionJWT, new Date(jwtExpiration * 1000));
+	return { session, jwt: sessionJWT, sessionCookie, jwtCookie };
 }
 
 export async function createAndSetSessionAndJWT(event: RequestEvent, user: User) {

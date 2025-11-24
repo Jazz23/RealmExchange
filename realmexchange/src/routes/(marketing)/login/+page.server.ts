@@ -34,6 +34,11 @@ export const actions: Actions = {
 			return fail(400, { message: 'Incorrect username or password' });
 		}
 
+		// Check if user has a password (not OAuth-only)
+		if (!existingUser.passwordHash) {
+			return fail(400, { message: 'This account uses Google login. Please sign in with Google.' });
+		}
+
 		const validPassword = auth.verifyPassword(existingUser.passwordHash, password);
 		if (!validPassword) {
 			return fail(400, { message: 'Incorrect username or password' });

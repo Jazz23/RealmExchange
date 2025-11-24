@@ -2,6 +2,7 @@ import { sequence } from '@sveltejs/kit/hooks';
 import * as auth from '$lib/server/auth';
 import type { Handle } from '@sveltejs/kit';
 import { setDb } from '$lib/server/db';
+import { redirect } from '@sveltejs/kit';
 
 const handleDb: Handle = async ({ event, resolve }) => {
 	setDb(event.platform!.env.DB);
@@ -48,6 +49,12 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 
 	event.locals.user = user;
 	event.locals.session = session;
+
+	// Redirect to set username if user has generated username
+	if (user && user.username.startsWith('auto_generated') && event.url.pathname !== '/set-username') {
+		throw redirect(302, '/set-username');
+	}
+
 	return resolve(event);
 };
 

@@ -40,6 +40,7 @@ export const actions: Actions = {
 				emailVerificationExpiresAt,
 				passwordResetToken: null,
 				passwordResetExpiresAt: null,
+				googleId: null,
 				emailNotifications: true,
 				hwid: ""
 			};
