@@ -3,7 +3,7 @@
 	"version": "0.0.0",
 	"private": true,
 	"scripts": {
-		"deploy": "wrangler deploy",
+		"deploy": "npm install && wrangler deploy",
 		"dev": "wrangler dev --inspector-port=1235 --persist-to=../.wrangler",
 		"start": "wrangler dev --persist-to=../.wrangler",
 		"test": "vitest",

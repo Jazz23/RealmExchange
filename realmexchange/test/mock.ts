@@ -1,4 +1,3 @@
-import { DOMAIN } from "$env/static/private";
 import type { Account } from "../src/lib/server/realmapi.ts";
 
 export async function mockCreateAccount(): Promise<Account> {

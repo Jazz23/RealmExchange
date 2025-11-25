@@ -11,7 +11,7 @@
 		if (data.verified) {
 			message = 'Email verified successfully! You can now sign in.';
 			isSuccess = true;
-			setTimeout(() => goto('/login'), 3000);
+			setTimeout(() => goto('/logout'), 3000);
 		} else if (data.error) {
 			message = data.error;
 			isSuccess = false;
@@ -39,7 +39,7 @@
 			{/if}
 			<p class="mt-2 text-sm text-gray-600">{message}</p>
 			{#if isSuccess}
-				<p class="mt-4 text-sm text-gray-500">Redirecting to login page...</p>
+				<p class="mt-4 text-sm text-gray-500">Redirecting to home page...</p>
 			{:else}
 				<a href="/signup" class="mt-4 inline-block text-sm text-blue-600 hover:text-blue-500">Try signing up again</a>
 			{/if}

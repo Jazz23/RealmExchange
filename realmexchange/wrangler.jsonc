@@ -29,7 +29,7 @@
 		{
 			"binding": "DB",
 			"database_name": "realm-exchange",
-			"database_id": "e37fcdfc-8a13-43e8-b598-fd3d3f9e14a6",
+			"database_id": "1c37cdcf-d3cd-4ef7-ad0b-1c4f70e67ba3",
 			"migrations_dir": "./src/lib/server/db/migrations"
 		}
 	],
