@@ -1,0 +1,1 @@
+ALTER TABLE `user` ADD `install_path` text DEFAULT '%USERPROFILE%\Documents\RealmOfTheMadGod\Production' NOT NULL;

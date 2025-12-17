@@ -73,4 +73,4 @@
 {/if}
 
 <hr class="mb-10 mt-10" />
-<div class="m-10"><Inventory /></div>
+<div class="m-10"><Inventory installPath={data.user!.installPath} /></div>

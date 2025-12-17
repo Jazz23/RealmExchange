@@ -14,21 +14,31 @@
 	let copied = $state(false);
 	const hwidCommand = `powershell -NoLogo -NoProfile -Command "$bb=(Get-CimInstance Win32_BaseBoard).SerialNumber; $bios=(Get-CimInstance Win32_BIOS).SerialNumber; $os=(Get-CimInstance Win32_OperatingSystem).SerialNumber; $concat=\\"$bb$bios$os\\"; $sha1=[System.Security.Cryptography.SHA1]::Create(); $bytes=[System.Text.Encoding]::UTF8.GetBytes($concat); $hash=$sha1.ComputeHash($bytes); ($hash | ForEach-Object { '{0:x2}' -f $_ }) -join ''"`;
 
-	// On hwidInput change, we can close the setup modal. Regex test it with ^[a-f0-9]{40}$
+	// Show the install path prompt after a valid HWID is entered
+	let showInstallSetup = $state(false);
+	let installPathInput = $state('%USERPROFILE%\\Documents\\RealmOfTheMadGod\\Production');
+
 	$effect(() => {
 		if (/^[a-f0-9]{40}$/.test(hwidInput)) {
+			// open install path modal instead of immediately submitting
+			showInstallSetup = true;
 			showHWIDSetup = false;
-			const formData = new FormData();
-			formData.append('hwid', hwidInput);
-
-			fetch('?/submitHWID', {
-				method: 'POST',
-				body: formData
-			});
-
-			doneSettingHWID = true;
 		}
 	});
+
+	function submitHWIDAndPath() {
+		const formData = new FormData();
+		formData.append('hwid', hwidInput);
+		formData.append('install_path', installPathInput);
+
+		fetch('?/submitHWID', {
+			method: 'POST',
+			body: formData
+		});
+
+		showInstallSetup = false;
+		doneSettingHWID = true;
+	}
 </script>
 
 <Button onclick={() => (showHWIDSetup = true)}>Setup</Button>
@@ -69,6 +79,25 @@
 				>
 					{copied ? 'Copied!' : 'Copy'}
 				</Button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if showInstallSetup}
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
+			<p class="mb-4 text-center text-xl font-bold">Enter your Realm install path</p>
+			<input
+				type="text"
+				class="mb-4 w-full border p-2"
+				placeholder="%USERPROFILE%\\Documents\\RealmOfTheMadGod\\Production"
+				bind:value={installPathInput}
+			/>
+			<p class="mb-4 text-sm text-muted-foreground">Default: %USERPROFILE%\\Documents\\RealmOfTheMadGod\\Production</p>
+			<div class="flex justify-center gap-2">
+				<Button onclick={() => submitHWIDAndPath()}>Save</Button>
+				<Button onclick={() => (showInstallSetup = false)}>Cancel</Button>
 			</div>
 		</div>
 	</div>

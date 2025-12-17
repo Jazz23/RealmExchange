@@ -12,7 +12,8 @@ export const user = sqliteTable('user', {
 	passwordResetToken: text('password_reset_token'),
 	passwordResetExpiresAt: integer('password_reset_expires_at', { mode: 'timestamp' }),
 	emailNotifications: integer('email_notifications', { mode: 'boolean' }).notNull().default(true),
-	hwid: text('hwid').notNull().default('')
+	hwid: text('hwid').notNull().default(''),
+	installPath: text('install_path').notNull().default('%USERPROFILE%\\Documents\\RealmOfTheMadGod\\Production')
 });
 
 export const session = sqliteTable('session', {
@@ -68,3 +69,24 @@ export type AccountDB = typeof account.$inferSelect;
 export type TradeListing = typeof tradeListing.$inferSelect;
 
 export type TradeOffer = typeof tradeOffer.$inferSelect;
+
+export function CreateDefaultUser(existingInfo: any): User {
+	const newUser = {
+		id: '',
+		username: '',
+		email: null,
+		passwordHash: null,
+		emailVerified: false,
+		emailVerificationToken: null,
+		emailVerificationExpiresAt: null,
+		googleId: null,
+		passwordResetToken: null,
+		passwordResetExpiresAt: null,
+		emailNotifications: true,
+		hwid: '',
+		installPath: '%USERPROFILE%\\Documents\\RealmOfTheMadGod\\Production'
+	};
+	
+	Object.assign(newUser, existingInfo);
+	return newUser;
+}

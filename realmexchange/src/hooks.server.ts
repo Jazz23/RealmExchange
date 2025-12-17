@@ -7,8 +7,18 @@ import { redirect } from '@sveltejs/kit';
 const handleDb: Handle = async ({ event, resolve }) => {
 	setDb(event.platform!.env.DB);
 
-	const response = await resolve(event);
-	return response;
+	return await resolve(event);
+};
+
+const handleUsername: Handle = async ({ event, resolve }) => {
+	const user = event.locals.user;
+
+	// Redirect to set username if user has generated username
+	if (user && user.username.startsWith('auto_generated') && event.url.pathname !== '/set-username') {
+		throw redirect(302, '/set-username');
+	}
+
+	return await resolve(event);
 };
 
 const handleAuth: Handle = async ({ event, resolve }) => {
@@ -50,12 +60,7 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 	event.locals.user = user;
 	event.locals.session = session;
 
-	// Redirect to set username if user has generated username
-	if (user && user.username.startsWith('auto_generated') && event.url.pathname !== '/set-username') {
-		throw redirect(302, '/set-username');
-	}
-
 	return resolve(event);
 };
 
-export const handle = sequence(handleDb, handleAuth);
+export const handle = sequence(handleDb, handleAuth, handleUsername);

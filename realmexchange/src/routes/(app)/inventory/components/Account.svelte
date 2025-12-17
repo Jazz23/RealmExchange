@@ -13,7 +13,8 @@
 		mode = 'full',
 		selected = false,
 		onClick,
-		isLocked = false
+		isLocked = false,
+		installPath
 	}: {
 		name: string;
 		inventory: string[];
@@ -22,6 +23,7 @@
 		selected?: boolean;
 		onClick?: () => void;
 		isLocked?: boolean;
+		installPath?: string;
 	} = $props();
 	let command = $state('');
 	let isRefreshing = $state(false);
@@ -65,7 +67,7 @@
 
 	// Base64 encode the access token
 	function generateCommand(accessToken: string, timestamp: string): string {
-		return `start "" /D "C:\\RealmOfTheMadGod\\Production" "C:\\RealmOfTheMadGod\\Production\\RotMG Exalt.exe" data:{platform:Deca,guid:,token:${btoa(accessToken)},tokenTimestamp:${btoa(timestamp)},tokenExpiration:ODY0MDA=,env:4,serverName:}`;
+		return `start "" /D "${installPath}" "${installPath}\\RotMG Exalt.exe" data:{platform:Deca,guid:,token:${btoa(accessToken)},tokenTimestamp:${btoa(timestamp)},tokenExpiration:ODY0MDA=,env:4,serverName:}`;
 	}
 </script>
 

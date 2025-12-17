@@ -30,19 +30,13 @@ export const actions: Actions = {
 		const emailVerificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
 		try {
-			const newUser: User = {
+			const newUser = {
 				id: userId,
 				username,
 				email,
 				passwordHash,
-				emailVerified: false,
 				emailVerificationToken,
-				emailVerificationExpiresAt,
-				passwordResetToken: null,
-				passwordResetExpiresAt: null,
-				googleId: null,
-				emailNotifications: true,
-				hwid: ""
+				emailVerificationExpiresAt
 			};
 			await db.insert(table.user).values(newUser);
 

@@ -73,7 +73,7 @@ export async function validateSessionToken(token: string) {
 	const [result] = await db
 		.select({
 			// Adjust user table here to tweak returned data
-			user: { id: table.user.id, username: table.user.username, email: table.user.email, emailVerified: table.user.emailVerified, emailNotifications: table.user.emailNotifications },
+			user: table.user,
 			session: table.session
 		})
 		.from(table.session)
@@ -100,7 +100,7 @@ export async function validateSessionToken(token: string) {
 			.where(eq(table.session.id, session.id));
 	}
 
-	return { session, user: user as TokenUser };
+	return { session, user: user as User };
 }
 
 export type SessionValidationResult = Awaited<ReturnType<typeof validateSessionToken>>;
@@ -141,14 +141,6 @@ export function getSessionTokenCookie(token: string, expiresAt: Date): string {
 
 export function getSessionJWTCookie(jwt: string, expiresAt: Date): string {
 	return `${sessionJWTCookieName}=${jwt}; Path=/; Expires=${expiresAt.toUTCString()}; HttpOnly; Secure; SameSite=Lax`;
-}
-
-export function getDeleteSessionTokenCookie(): string {
-	return `${sessionCookieName}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax`;
-}
-
-export function getDeleteSessionJWTCookie(): string {
-	return `${sessionJWTCookieName}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax`;
 }
 
 // -------------------------------------------- JWT Implementation --------------------------------------------
@@ -317,17 +309,17 @@ export async function validateSessionJWT(jwt: string) {
 		expiresAt: new Date(parsedSession.expires_at * 1000)
 	};
 
-	return { session, user: body.user as TokenUser };
+	return { session, user: body.user as User };
 }
 
-export async function createSessionAndCookies(user: User) {
+export async function createSessionAndCookies(user: { id: string }) {
 	// Remove old sessions from the database
 	await db.delete(table.session).where(eq(table.session.userId, user.id));
 
 	// Create new session and JWT and store in database
 	const sessionToken = generateSessionToken();
 	const session = await createSession(sessionToken, user.id);
-	const { sessionJWT, exp: jwtExpiration } = await createSessionJWT(session, user);
+	const { sessionJWT, exp: jwtExpiration } = await createSessionJWT(session, table.CreateDefaultUser(user));
 	const sessionCookie = getSessionTokenCookie(sessionToken, session.expiresAt);
 	const jwtCookie = getSessionJWTCookie(sessionJWT, new Date(jwtExpiration * 1000));
 	return { session, jwt: sessionJWT, sessionCookie, jwtCookie };

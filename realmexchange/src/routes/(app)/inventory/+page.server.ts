@@ -423,17 +423,23 @@ export const actions = {
             return { error: 'Not authenticated' };
         }
 
-        // Grab the HWID from the form data
+        // Grab the HWID and install path from the form data
         const data = await request.formData();
         const hwid = data.get('hwid');
+        const installPath = data.get('install_path');
 
         if (typeof hwid !== 'string' || hwid.length === 0) {
             return { error: 'Invalid HWID' };
         }
 
-        // Update the user's HWID in the DB
+        const installPathStr = typeof installPath === 'string' && installPath.length > 0
+            ? installPath
+            : '%USERPROFILE%\\Documents\\RealmOfTheMadGod\\Production';
+
+        // Update the user's HWID and install path in the DB
         await db.update(table.user).set({
-            hwid: hwid
+            hwid: hwid,
+            installPath: installPathStr
         }).where(eq(table.user.id, locals.user.id));
 
         return { success: true };

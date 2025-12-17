@@ -78,7 +78,7 @@ export const GET: RequestHandler = async ({ url, cookies, request }) => {
 			.where(eq(table.user.googleId, googleUser.id))
 			.limit(1);
 
-		let user: table.User;
+		let user: any;
 		let isNewUser = false;
 
 		if (existingUser[0]) {
@@ -112,15 +112,8 @@ export const GET: RequestHandler = async ({ url, cookies, request }) => {
 					id: userId,
 					username,
 					email: googleUser.email,
-					passwordHash: '', // No password for OAuth users
 					emailVerified: true, // Google emails are verified
-					emailVerificationToken: null,
-					emailVerificationExpiresAt: null,
-					passwordResetToken: null,
-					passwordResetExpiresAt: null,
-					googleId: googleUser.id,
-					emailNotifications: true,
-					hwid: ''
+					googleId: googleUser.id
 				};
 
 				await db.insert(table.user).values(user);
