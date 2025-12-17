@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/stores';
 	import { Button } from "$lib/components/ui/button/index.js";
 	import * as Card from "$lib/components/ui/card/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
@@ -12,6 +13,11 @@
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	// Read query parameters for messages
+	let success = $derived($page.url.searchParams.get('success') === 'true');
+	let emailChanged = $derived($page.url.searchParams.get('emailChanged') === 'true');
+	let error = $derived($page.url.searchParams.get('error'));
 </script>
 
 <div class="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
@@ -39,6 +45,12 @@
 						</Field>
 
 						<Field>
+							<FieldLabel for="installPath">Install Path</FieldLabel>
+							<Input id="installPath" name="installPath" type="text" value={data.user.installPath || ''} />
+							<FieldDescription>Path to your Realm of the Mad God installation directory</FieldDescription>
+						</Field>
+
+						<Field>
 							<label class="flex items-center space-x-2">
 								<input
 									type="checkbox"
@@ -52,25 +64,22 @@
 
 						<Field>
 							<Button type="submit" class="w-full cursor-pointer">Save Settings</Button>
-							<FieldDescription class="text-center">
-								<a href="/">Back to marketplace</a>
-							</FieldDescription>
 						</Field>
 					</FieldGroup>
 				</Card.Content>
 			</Card.Root>
 		</form>
 
-		{#if form?.success}
+		{#if success}
 			<div class="mt-4 rounded-lg border bg-green-50 p-4 text-center text-green-800 dark:bg-green-900 dark:text-green-200">
-				{#if form.emailChanged}
+				{#if emailChanged}
 					Settings saved! A verification email has been sent to your new email address. Please check your email and click the verification link to complete the email change.
 				{:else}
 					Settings saved successfully!
 				{/if}
 			</div>
-		{:else if form?.message}
-			<p class="mt-4 text-center text-red-500">{form.message}</p>
+		{:else if error}
+			<p class="mt-4 text-center text-red-500">{error}</p>
 		{/if}
 	</div>
 </div>

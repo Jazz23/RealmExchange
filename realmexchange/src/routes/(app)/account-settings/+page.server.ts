@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { sessionCookieName, sessionJWTCookieName } from '$lib/server/auth';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -15,7 +16,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	update: async ({ request, locals }) => {
+	update: async ({ request, locals, cookies }) => {
 		if (!locals.user) {
 			return fail(401, { message: 'Not authenticated' });
 		}
@@ -23,46 +24,63 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const email = formData.get('email');
 		const emailNotifications = formData.get('emailNotifications') === 'on';
+		const installPath = formData.get('installPath');
 
 		// Validate email
 		if (!validateEmail(email)) {
-			return fail(400, { message: 'Invalid email address' });
+			throw redirect(302, '/account-settings?error=Invalid email address');
 		}
 
-		try {
-			let emailChanged = false;
-			let verificationToken = null;
+		let verificationToken = null;
 
-			// Check if email is being changed
-			if (email !== locals.user.email) {
-				emailChanged = true;
-				// Generate verification token and expiry (24 hours from now)
-				verificationToken = generateVerificationToken();
-				const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+		// Check if email is being changed
+		if (email !== locals.user.email) {
+			// Generate verification token and expiry (24 hours from now)
+			verificationToken = generateVerificationToken();
+			const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-				// Send verification email
-				await sendEmailVerificationEmail(email, verificationToken);
+			// Send verification email
+			await sendEmailVerificationEmail(email, verificationToken);
 
-				// Update user with verification token and expiry
-				await db
-					.update(table.user)
-					.set({
-						email: email,
-						emailVerified: false,
-						emailVerificationToken: verificationToken,
-						emailVerificationExpiresAt: expiresAt
-					})
-					.where(eq(table.user.id, locals.user.id));
+			// Update user with verification token and expiry
+			await db
+				.update(table.user)
+				.set({
+					email: email,
+					emailVerified: false,
+					emailVerificationToken: verificationToken,
+					emailVerificationExpiresAt: expiresAt,
+					emailNotifications: emailNotifications,
+					installPath: installPath
+				})
+				.where(eq(table.user.id, locals.user.id));
 
-				// Update locals
-				locals.user.email = email;
-				locals.user.emailVerified = false;
+			// Update locals
+			locals.user.email = email;
+			locals.user.emailVerified = false;
+			locals.user.emailNotifications = emailNotifications;
+			locals.user.installPath = installPath;
 
-				return { success: true, emailChanged: true };
-			}
-		} catch (error) {
-			console.error('Settings update error:', error);
-			return fail(500, { message: 'Failed to update settings' });
+			// Invalidate JWT and redirect to refresh page
+			cookies.delete(sessionJWTCookieName, { path: '/' });
+			throw redirect(302, '/account-settings?success=true&emailChanged=true');
+		} else {
+			// Update other settings without changing email
+			await db
+				.update(table.user)
+				.set({
+					emailNotifications: emailNotifications,
+					installPath: installPath
+				})
+				.where(eq(table.user.id, locals.user.id));
+
+			// Update locals
+			locals.user.emailNotifications = emailNotifications;
+			locals.user.installPath = installPath;
+
+			// Invalidate JWT and redirect to refresh page
+			cookies.delete(sessionJWTCookieName, { path: '/' });
+			throw redirect(302, '/account-settings?success=true');
 		}
 	}
 };
