@@ -24,7 +24,7 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const email = formData.get('email');
 		const emailNotifications = formData.get('emailNotifications') === 'on';
-		const installPath = formData.get('installPath');
+		const installPath = (formData.get('installPath') as string) ?? '';
 
 		// Validate email
 		if (!validateEmail(email)) {
